@@ -6,10 +6,10 @@ import {
   startTransition,
   lazy,
   Suspense,
+  useCallback,
 } from "react";
 import { preconnect, preload } from "react-dom";
 import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import favorite from "../../assets/svgs/icons8-heart.svg";
 import favorited from "../../assets/svgs/icons8-favorited.svg";
 const fallback = "/fallbacks/playlist-fallback.webp";
@@ -18,18 +18,25 @@ import pause from "../../assets/svgs/pause-icon.svg";
 import addAlbum from "../../assets/svgs/icons8-addplaylist-28.svg";
 import addedToAlbum from "../../assets/svgs/tick.svg";
 import { getAlbumData } from "../../api/requests";
-import { useBoundStore } from "../../store/store";
+import { useBoundStore } from "../../modules/hooks";
 import { AlbumById, Image, TrackDetails } from "../../types/GlobalTypes";
-import useClearTimer from "../../hooks/useClearTimer";
-import { cleanString } from "../../helpers/cleanString";
-import handleCollectionPlayback from "../../helpers/handleCollectionPlayback";
-import { animateScreen } from "../../helpers/animateScreen";
+import {
+  fadeScreen,
+  playCollection,
+  sanitizeString,
+} from "../../modules/helpers";
+import { useClearTimer } from "../../modules/hooks";
+import { useQuery } from "@tanstack/react-query";
 const Song = lazy(() => import("../../components/Song/Song"));
 const ListLoading = lazy(() => import("../Playlist/Loading"));
 const RouteNav = lazy(() => import("../../components/RouteNav/RouteNav"));
 const ShuffleButton = lazy(
   () => import("../../components/ShuffleButton/ShuffleButton"),
 );
+
+const { cleanString } = await sanitizeString();
+const { animateScreen } = await fadeScreen();
+const handleCollectionPlayback = await playCollection();
 
 preconnect("https://lowkeymusic-v2.netlify.app");
 
@@ -39,7 +46,10 @@ export default function AlbumPage() {
   const timerRef = useRef<NodeJS.Timeout>(null);
   const { data } = useQuery({
     queryKey: ["albumPage", id],
-    queryFn: () => id && getAlbumData(id),
+    queryFn: async () => {
+      if (!id) return null;
+      return (await getAlbumData(id)) as AlbumById;
+    },
     enabled: !!id,
     throwOnError: true,
     refetchOnReconnect: "always",
@@ -52,7 +62,7 @@ export default function AlbumPage() {
     timerRef.current = animateScreen(albumEl);
   }
 
-  useClearTimer(timerRef);
+  useClearTimer.default(timerRef);
 
   return (
     <Suspense fallback={<ListLoading />}>
@@ -73,7 +83,7 @@ export default function AlbumPage() {
           <div className="flex h-auto w-full items-center justify-between sm:mt-2">
             <AlbumCount
               primaryArtists={data ? data.primaryArtists : "Unknown Artist"}
-              songCount={data ? data.songCount : 0}
+              songCount={data ? String(data.songCount) : "0"}
             />
             <AlbumControls album={data} />
           </div>
@@ -84,7 +94,7 @@ export default function AlbumPage() {
   );
 }
 
-const AlbumControls = memo(({ album }: { album: AlbumById }) => {
+const AlbumControls = memo(({ album }: { album?: AlbumById | null }) => {
   const albums = useBoundStore((state) => state.favorites.albums);
   const libraryAlbums = useBoundStore((state) => state.library.albums);
   const setFavoriteAlbum = useBoundStore((state) => state.setFavoriteAlbum);
@@ -94,34 +104,39 @@ const AlbumControls = memo(({ album }: { album: AlbumById }) => {
   const setLibraryAlbum = useBoundStore((state) => state.setLibraryAlbum);
   const removeLibraryAlbum = useBoundStore((state) => state.removeLibraryAlbum);
   const isAdded = useMemo(() => {
-    return libraryAlbums?.some((a) => a.id === album?.id);
+    return (libraryAlbums ?? []).some((a) => a.id === album?.id);
   }, [libraryAlbums, album]);
   const isFavorite = useMemo(
-    () => albums?.some((a: AlbumById) => a.id === album?.id),
+    () => (albums ?? []).some((a: AlbumById) => a.id === album?.id),
     [albums, album],
   );
 
-  const handleAlbum = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-    e.stopPropagation();
-    if (album && isAdded) {
-      removeLibraryAlbum(album.id);
-    } else {
-      setLibraryAlbum(album);
-    }
-  };
-
-  const handleFavorite = (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
-  ) => {
-    e.stopPropagation();
-    if (album !== null) {
-      if (isFavorite) {
-        removeFavoriteAlbum(album.id);
+  const handleAlbum = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.stopPropagation();
+      if (!album) return;
+      if (isAdded) {
+        removeLibraryAlbum(album.id);
       } else {
-        setFavoriteAlbum(album);
+        setLibraryAlbum(album);
       }
-    }
-  };
+    },
+    [album, isAdded, removeLibraryAlbum, setLibraryAlbum],
+  );
+
+  const handleFavorite = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.stopPropagation();
+      if (album != null) {
+        if (isFavorite) {
+          removeFavoriteAlbum(album.id);
+        } else {
+          setFavoriteAlbum(album);
+        }
+      }
+    },
+    [album, isFavorite, removeFavoriteAlbum, setFavoriteAlbum],
+  );
 
   return (
     <div
@@ -167,7 +182,7 @@ const AlbumControls = memo(({ album }: { album: AlbumById }) => {
 });
 AlbumControls.displayName = "AlbumControls";
 
-const AlbumPlayButton = ({ album }: { album: AlbumById }) => {
+const AlbumPlayButton = ({ album }: { album?: AlbumById | null }) => {
   const setNowPlaying = useBoundStore((state) => state.setNowPlaying);
   const setIsPlaying = useBoundStore((state) => state.setIsPlaying);
   const queue = useBoundStore((state) => state.nowPlaying.queue);
@@ -176,25 +191,30 @@ const AlbumPlayButton = ({ album }: { album: AlbumById }) => {
   const isPlaying = useBoundStore((state) => state.nowPlaying.isPlaying);
   const isAlbumPlaying = isPlaying && queue?.id === album?.id;
 
+  const handleAlbumPlay = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      if (!album) return;
+      handleCollectionPlayback.default(
+        e,
+        album,
+        startTransition,
+        isPlaying,
+        inQueue,
+        setQueue,
+        setNowPlaying,
+        setIsPlaying,
+      );
+    },
+    [album, inQueue, isPlaying, setIsPlaying, setNowPlaying, setQueue],
+  );
+
   return (
     <button
       data-testid="album-playback"
       type="button"
       tabIndex={album ? 0 : -1}
       aria-label={isAlbumPlaying ? "Pause album" : "Play album"}
-      onClick={(e) =>
-        album &&
-        handleCollectionPlayback(
-          e,
-          album,
-          startTransition,
-          isPlaying,
-          inQueue,
-          setQueue,
-          setNowPlaying,
-          setIsPlaying,
-        )
-      }
+      onClick={handleAlbumPlay}
       className="rounded-full bg-emerald-400 p-1 focus:ring-4 focus:ring-black"
       disabled={!album}
     >

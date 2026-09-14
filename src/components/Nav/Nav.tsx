@@ -1,24 +1,24 @@
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useBoundStore } from "../../store/store";
 import home from "../../assets/svgs/icons8-home.svg";
 import search from "../../assets/svgs/icons8-search.svg";
-import libraryImg from "../../assets/svgs/icons8-library.svg";
+import library from "../../assets/svgs/icons8-library.svg";
 import add from "../../assets/svgs/icons8-plus.svg";
 import heart from "../../assets/svgs/icons8-heart.svg";
 const online = "/icons/icons8-online-28.png";
 const offline = "/icons/icons8-offline-28.png";
 const playlistfallback = "/fallbacks/playlist-fallback-min.webp";
 const fallback = "/fallbacks/playlist-fallback.webp";
+import { useBoundStore } from "../../modules/hooks";
 import { AlbumById, PlaylistById, UserPlaylist } from "../../types/GlobalTypes";
 
-const Nav = () => {
+const Nav = memo(() => {
   return (
     <nav
       role="navigation"
-      className="hidden h-full max-h-screen overflow-hidden border-l-2 border-black bg-neutral-800 sm:block sm:w-20 lg:w-80 2xl:w-96"
+      className="hidden h-full max-h-screen shrink-0 overflow-hidden border-l-2 border-black bg-neutral-800 sm:block sm:w-20 md:min-w-16 lg:w-56 2xl:w-64"
     >
-      <div className="relative mx-auto flex h-[88dvh] w-[95%] flex-col items-start justify-start overflow-hidden bg-neutral-800 px-1 pt-2">
+      <div className="relative mx-auto flex h-[88dvh] w-[95%] flex-col items-start justify-start overflow-hidden bg-neutral-800 p-2">
         <Link
           to={"/home"}
           className="flex w-full items-center justify-start p-3 pl-4 outline-none transition-colors hover:bg-neutral-600 focus-visible:bg-neutral-700"
@@ -26,48 +26,46 @@ const Nav = () => {
           <img
             src={home}
             alt="home-icon"
-            className="mr-7 w-7 flex-shrink-0 xl:mr-[22px]"
+            className="mr-7 w-[25px] flex-shrink-0 xl:mr-[22px]"
           />
-          <p className="hidden text-base font-normal text-white sm:block">
-            Home
-          </p>
+          <p className="hidden text-sm font-normal text-white sm:block">Home</p>
         </Link>
         <Link
           to={"/search"}
-          className="flex w-full items-center justify-start p-3 pl-4 outline-none transition-colors hover:bg-neutral-600 focus-visible:bg-neutral-700"
+          className="flex w-full items-center justify-start p-3 py-2 pl-4 outline-none transition-colors hover:bg-neutral-600 focus-visible:bg-neutral-700"
         >
           <img
             src={search}
             alt="search-icon"
-            className="mr-7 w-7 flex-shrink-0 xl:mr-[22px]"
+            className="mr-7 w-6 flex-shrink-0 xl:mr-[22px]"
           />
-          <p className="-mt-0.5 hidden text-base font-normal text-white sm:block">
+          <p className="-mt-0.5 hidden text-sm font-normal text-white sm:block">
             Search
           </p>
         </Link>
         <Link
           to={"/library"}
-          className="flex w-full items-center justify-start p-3 py-3.5 pl-4 outline-none transition-colors hover:bg-neutral-600 focus-visible:bg-neutral-700"
+          className="flex w-full items-center justify-start p-3 py-3 pl-4 outline-none transition-colors hover:bg-neutral-600 focus-visible:bg-neutral-700"
         >
           <img
-            src={libraryImg}
+            src={library}
             alt="library-icon"
-            className="ml-0.5 mr-[30px] w-[22px] flex-shrink-0 xl:mr-[27px] 2xl:mr-[26px]"
+            className="ml-0.5 mr-[30px] w-5 flex-shrink-0 xl:mr-[27px] 2xl:mr-[26px]"
           />
-          <p className="hidden text-base font-normal text-white sm:block">
+          <p className="hidden text-sm font-normal text-white sm:block">
             Library
           </p>
         </Link>
         <Link
           to={"/favorites"}
-          className="flex w-full items-center justify-start p-3 py-3.5 outline-none transition-colors hover:bg-neutral-600 focus-visible:bg-neutral-700"
+          className="flex w-full items-center justify-start p-3 py-2 outline-none transition-colors hover:bg-neutral-600 focus-visible:bg-neutral-700"
         >
           <img
             src={heart}
             alt="favorites-icon"
-            className="ml-0.5 mr-7 w-[28px] flex-shrink-0 xl:mr-6 xl:w-7"
+            className="ml-0.5 mr-7 w-[26px] flex-shrink-0 xl:mr-6 xl:w-7"
           />
-          <p className="hidden text-base font-normal text-white sm:block">
+          <p className="hidden text-sm font-normal text-white sm:block">
             Favorites
           </p>
         </Link>
@@ -77,31 +75,32 @@ const Nav = () => {
       </div>
     </nav>
   );
-};
+});
 Nav.displayName = "Nav";
 export default Nav;
 
-const PlaylistCreationButton = () => {
+const PlaylistCreationButton = memo(() => {
   const setRevealCreation = useBoundStore((state) => state.setRevealCreation);
 
   return (
     <button
-      className="flex w-full items-center justify-start p-3 py-3.5 pl-4 outline-none transition-colors hover:bg-neutral-600 focus-visible:bg-neutral-700"
+      className="flex w-full items-center justify-start p-3 py-2 pl-4 outline-none transition-colors hover:bg-neutral-600 focus-visible:bg-neutral-700"
       onClick={() => setRevealCreation(true)}
     >
       <img
         src={add}
         alt="create-icon"
-        className="ml-0.5 mr-8 w-[21px] flex-shrink-0 invert xl:mr-7 xl:w-5"
+        className="ml-0.5 mr-8 w-[20px] flex-shrink-0 invert xl:mr-7 xl:w-5"
       />
-      <p className="-mt-0.5 hidden whitespace-nowrap text-base font-normal text-white sm:block">
+      <p className="-mt-0.5 hidden whitespace-nowrap text-sm font-normal text-white sm:block">
         New playlist
       </p>
     </button>
   );
-};
+});
+PlaylistCreationButton.displayName = "PlaylistCreationButton";
 
-const OnlineStatus = () => {
+const OnlineStatus = memo(() => {
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
 
   useEffect(() => {
@@ -131,14 +130,15 @@ const OnlineStatus = () => {
       </p>
     </div>
   );
-};
+});
+OnlineStatus.displayName = "OnlineStatus";
 
-export function RecentPlaylistsOrAlbums() {
+export const RecentPlaylistsOrAlbums = memo(() => {
   const albums = useBoundStore((state) => state.library?.albums);
   const playlists = useBoundStore((state) => state.library?.playlists);
   const userPlaylists = useBoundStore((state) => state.library?.userPlaylists);
   return (
-    <ul className="mx-auto mt-2 flex w-[95%] flex-col items-center justify-start overflow-y-auto overflow-x-hidden pb-14 pl-1">
+    <ul className="mx-auto mt-3 flex w-[95%] flex-col items-center justify-start gap-[6px] overflow-y-auto overflow-x-hidden px-2 pb-14 lg:px-1">
       {albums?.map((album: AlbumById) => (
         <Link
           tabIndex={0}
@@ -146,15 +146,15 @@ export function RecentPlaylistsOrAlbums() {
           key={album.id}
           role="listitem"
           data-testid="album-listitem"
-          className="mb-2 flex h-[50px] w-full items-center justify-start outline-none transition-colors hover:bg-neutral-700 focus-visible:bg-neutral-700"
+          className="mb-2 flex h-[30px] w-full items-center justify-start p-1 outline-none transition-colors hover:bg-neutral-700 focus-visible:bg-neutral-700"
         >
           <img
             src={album.image[0]?.url || playlistfallback}
             alt="album-menu-icon"
-            width={50}
-            height={50}
+            width={30}
+            height={30}
             onError={(e) => (e.currentTarget.src = playlistfallback)}
-            className="mr-4 aspect-square h-[50px] w-[50px] flex-shrink-0 rounded-sm shadow-md shadow-black"
+            className="mr-4 aspect-square h-[30px] w-[30px] flex-shrink-0 rounded-sm shadow-md shadow-black"
           />
           <p className="line-clamp-1 hidden text-ellipsis whitespace-nowrap text-sm text-neutral-200 sm:block">
             {album.name}
@@ -168,15 +168,15 @@ export function RecentPlaylistsOrAlbums() {
           key={playlist.id}
           role="listitem"
           data-testid="playlist-listitem"
-          className="mb-2 flex h-[50px] w-full items-center justify-start outline-none transition-colors hover:bg-neutral-700 focus-visible:bg-neutral-700"
+          className="mb-2 flex h-[30px] w-full items-center justify-start p-1 outline-none transition-colors hover:bg-neutral-700 focus-visible:bg-neutral-700"
         >
           <img
             src={playlist.image[0]?.url || fallback}
             alt="playlist-menu-icon"
-            width={50}
-            height={50}
+            width={30}
+            height={30}
             onError={(e) => (e.currentTarget.src = playlistfallback)}
-            className="mr-4 aspect-square h-[50px] w-[50px] flex-shrink-0 rounded-sm shadow-md shadow-black"
+            className="mr-4 aspect-square h-[30px] w-[30px] flex-shrink-0 rounded-sm shadow-md shadow-black"
           />
           <p className="line-clamp-1 hidden text-ellipsis whitespace-nowrap text-sm text-neutral-200 sm:block">
             {playlist.name}
@@ -190,14 +190,14 @@ export function RecentPlaylistsOrAlbums() {
           key={playlist.id}
           role="listitem"
           data-testid="userplaylist-listitem"
-          className="mb-2 flex h-[50px] w-full items-center justify-start outline-none transition-colors hover:bg-neutral-700 focus-visible:bg-neutral-700"
+          className="mb-2 flex h-[30px] w-full items-center justify-start p-1 outline-none transition-colors hover:bg-neutral-700 focus-visible:bg-neutral-700"
         >
           <img
             src={playlistfallback}
-            width={50}
-            height={50}
+            width={30}
+            height={30}
             alt="userplaylist-menu-icon"
-            className="mr-4 h-[50px] w-[50px] flex-shrink-0 rounded-sm bg-emerald-500 shadow-md shadow-black"
+            className="mr-4 h-[30px] w-[30px] flex-shrink-0 rounded-sm bg-emerald-300 shadow-md shadow-black"
           />
           <p className="line-clamp-1 hidden text-ellipsis whitespace-nowrap text-sm text-neutral-200 sm:block">
             {playlist.name}
@@ -206,4 +206,6 @@ export function RecentPlaylistsOrAlbums() {
       ))}
     </ul>
   );
-}
+});
+RecentPlaylistsOrAlbums.displayName = "RecentPlaylistsOrAlbums";
+

@@ -1,9 +1,10 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
-import { useBoundStore } from "../../store/store";
 import { TrackDetails, UserPlaylist } from "../../types/GlobalTypes";
 import close from "../../assets/svgs/close.svg";
 import add from "../../assets/svgs/icons8-plus.svg";
-import { saveToLocalStorage } from "../../helpers/saveToLocalStorage";
+import { useBoundStore } from "../../modules/hooks";
+import { saveLocal } from "../../modules/helpers";
+const { saveToLocalStorage } = await saveLocal();
 
 export default function PlaylistModal({
   ref,
@@ -42,7 +43,7 @@ export default function PlaylistModal({
     >
       <div className="-mt-14 flex h-auto w-[90%] flex-col items-start justify-between rounded-sm bg-neutral-800 p-3 px-4 sm:w-[600px]">
         <div className="flex w-full items-center justify-between">
-          <h2 className="whitespace-nowrap text-xl font-bold text-white">
+          <h2 className="whitespace-nowrap text-xl font-medium text-white">
             Create playlist
           </h2>
           <button
@@ -220,7 +221,7 @@ const CustomPlaylist = memo(
       >
         <label
           htmlFor={`new-playlist-${id}`}
-          className="mr-4 line-clamp-1 w-full cursor-pointer overflow-hidden text-ellipsis py-2 text-base font-semibold text-white focus-visible:bg-neutral-400"
+          className="mr-4 line-clamp-1 w-full cursor-pointer overflow-hidden text-ellipsis py-2 text-base font-medium text-white focus-visible:bg-neutral-400"
         >
           {name}
         </label>

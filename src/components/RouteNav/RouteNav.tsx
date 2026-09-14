@@ -1,9 +1,16 @@
 import { useNavigate } from "react-router-dom";
 import back from "../../assets/svgs/icons8-back.svg";
 import next from "../../assets/svgs/icons8-next.svg";
+import { useCallback } from "react";
 
 export default function RouteNav() {
   const navigate = useNavigate();
+  const goBack = useCallback(() => {
+    navigate(-1);
+  }, [navigate]);
+  const goForward = useCallback(() => {
+    navigate(1);
+  }, [navigate]);
 
   return (
     <div
@@ -13,7 +20,7 @@ export default function RouteNav() {
       <button
         data-testid="previous-route"
         tabIndex={0}
-        onClick={() => navigate(-1)} // go to previous page
+        onClick={goBack} // go to previous page
         className="group bg-transparent p-0"
       >
         <img
@@ -25,7 +32,7 @@ export default function RouteNav() {
       <button
         data-testid="next-route"
         tabIndex={0}
-        onClick={() => navigate(1)} //go to next page
+        onClick={goForward} //go to next page
         className="group bg-transparent p-0"
       >
         <img

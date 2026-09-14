@@ -1,16 +1,17 @@
 import {
   ComponentType,
-  lazy,
+  RefObject,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
-const PlaylistModal = lazy(
-  () => import("../../components/PlaylistModal/PlaylistModal"),
-);
+import { useResponsiveLayout } from "../../modules/hooks";
+
+type PlaylistModalProps = {
+  ref: RefObject<HTMLDivElement | null>;
+};
 
 type ModuleWithDefaultComponent = {
   default: ComponentType<unknown>;
@@ -48,13 +49,13 @@ export default function Layout() {
             path === "/" ? "sm:h-dvh" : "sm:h-[95vh]"
           }`}
         >
-          <div
+          <main
             ref={containerRef}
-            className="relative h-dvh w-full border-x-2 border-black"
+            className="relative h-dvh w-full md:min-w-[685px] border-x-2 border-black"
           >
             <Outlet />
-            <PlaylistModal ref={containerRef} />
-          </div>
+            <ConditionalPlaylistModal containerRef={containerRef} />
+          </main>
           <div
             data-testid="mobile-features"
             className={`fixed bottom-0 left-0 ${
@@ -83,6 +84,36 @@ export default function Layout() {
     </div>
   );
 }
+
+const ConditionalPlaylistModal = ({
+  containerRef,
+}: {
+  containerRef: RefObject<HTMLDivElement | null>;
+}) => {
+  const path = useLocation().pathname;
+  const [Component, setComponent] =
+    useState<ComponentType<PlaylistModalProps> | null>(null);
+
+  useEffect(() => {
+    const shouldLoad = !["/", "/not-found"].includes(path);
+
+    if (!shouldLoad) {
+      setComponent(null);
+      return;
+    }
+
+    const component =
+      components["../../components/PlaylistModal/PlaylistModal.tsx"];
+    if (component) {
+      component().then((mod) => {
+        setComponent(() => mod.default as ComponentType<PlaylistModalProps>);
+      });
+    }
+  }, [path]);
+
+  if (!Component) return null;
+  return <Component ref={containerRef} />;
+};
 
 const ConditionalComponent = ({
   filePath,

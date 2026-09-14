@@ -1,7 +1,15 @@
- import { lazy, memo, startTransition, useEffect, useMemo, useRef } from "react";
+import {
+  lazy,
+  memo,
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { preload } from "react-dom";
 import { useParams } from "react-router-dom";
-import { useBoundStore } from "../../store/store";
+import { useBoundStore } from "../../modules/hooks";
 import play from "../../assets/svgs/play-icon.svg";
 import pause from "../../assets/svgs/pause-icon.svg";
 const playlistfallback = "/fallbacks/playlist-fallback.webp";
@@ -10,11 +18,12 @@ import {
   TrackDetails,
   UserPlaylist,
 } from "../../types/GlobalTypes";
-import useClearTimer from "../../hooks/useClearTimer";
-import { animateScreen } from "../../helpers/animateScreen";
-import handleCollectionPlayback from "../../helpers/handleCollectionPlayback";
+import { useClearTimer } from "../../modules/hooks";
+import { fadeScreen, playCollection } from "../../modules/helpers";
 const Song = lazy(() => import("../../components/Song/Song"));
 const RouteNav = lazy(() => import("../../components/RouteNav/RouteNav"));
+const { animateScreen } = await fadeScreen();
+const handleCollectionPlayback = await playCollection();
 
 preload(playlistfallback, {
   as: "image",
@@ -35,7 +44,7 @@ export default function UserPlaylistPage() {
     [userPlaylists, id],
   );
 
-  useClearTimer(timerRef);
+  useClearTimer.default(timerRef);
   useEffect(() => {
     const localSaves = localStorage.getItem("local-library");
     if (localSaves !== null) {
@@ -123,40 +132,57 @@ const UserPlaylistControls = memo(({ id, songs, name }: UserPlaylist) => {
   const inQueue = useMemo(() => queueId === String(id), [id, queueId]);
   const playStatus =
     id === Number(queueId) && isPlaying ? "Pause playlist" : "Play playlist";
-  const collection = {
-    id: String(id),
-    image: songs[0]?.image || false,
-    name: name,
-    songs: songs,
-  };
-  const handlePlayback = (
-    e:
-      | React.MouseEvent<HTMLButtonElement, MouseEvent>
-      | React.KeyboardEvent<Element>,
-  ) => {
-    if (inQueue && !nowPlayingTrack) {
-      e.preventDefault();
-      setNowPlaying(songs[0]);
-      setIsPlaying(!isPlaying);
-      return;
-    }
+  const collection = useMemo(() => {
+    return {
+      id: String(id),
+      image: songs[0]?.image || false,
+      name: name,
+      songs: songs,
+    };
+  }, [id, name, songs]);
+  const handlePlayback = useCallback(
+    (
+      e:
+        | React.MouseEvent<HTMLButtonElement, MouseEvent>
+        | React.KeyboardEvent<Element>,
+    ) => {
+      if (inQueue && !nowPlayingTrack) {
+        e.preventDefault();
+        setNowPlaying(songs[0]);
+        setIsPlaying(!isPlaying);
+        return;
+      }
 
-    handleCollectionPlayback(
-      e,
+      handleCollectionPlayback.default(
+        e,
+        collection,
+        startTransition,
+        isPlaying,
+        inQueue,
+        setQueue,
+        setNowPlaying,
+        setIsPlaying,
+      );
+    },
+    [
       collection,
-      startTransition,
-      isPlaying,
       inQueue,
-      setQueue,
-      setNowPlaying,
+      isPlaying,
+      nowPlayingTrack,
       setIsPlaying,
-    );
-  };
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === " ") {
-      handlePlayback(e);
-    }
-  };
+      setNowPlaying,
+      setQueue,
+      songs,
+    ],
+  );
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        handlePlayback(e);
+      }
+    },
+    [handlePlayback],
+  );
 
   return (
     <div

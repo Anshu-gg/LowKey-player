@@ -1,8 +1,8 @@
 import { lazy, memo, Suspense, useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import { preconnect, preload } from "react-dom";
-import useClearTimer from "../../hooks/useClearTimer";
-import { animateScreen } from "../../helpers/animateScreen";
+import { useClearTimer } from "../../modules/hooks";
+import { fadeScreen } from "../../modules/helpers";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import x from "../../assets/svgs/icons8-twitterx.svg";
 import meta from "../../assets/svgs/icons8-meta.svg";
@@ -26,6 +26,7 @@ const RouteNav = lazy(() => import("../../components/RouteNav/RouteNav"));
 const FollowButton = lazy(
   () => import("../../components/FollowButton/FollowButton"),
 );
+const { animateScreen } = await fadeScreen();
 
 preconnect("https://lowkeymusic-v2.netlify.app");
 
@@ -34,7 +35,7 @@ export default function ArtistPage() {
   const artistEl = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout>(null);
 
-  useClearTimer(timerRef);
+  useClearTimer.default(timerRef);
   useEffect(() => {
     timerRef.current = animateScreen(artistEl);
   }, [id]);
@@ -43,7 +44,7 @@ export default function ArtistPage() {
     <div
       data-testid="artist-page"
       ref={artistEl}
-      className="home-fadeout w-full bg-neutral-900 pb-32 duration-300 ease-in sm:h-auto sm:pb-0"
+      className="home-fadeout w-full bg-neutral-900 pb-32 duration-300 ease-in sm:h-auto sm:pb-20"
     >
       {id && <ArtistInfo id={id} />}
       {id && <ArtistAlbums id={id} />}
@@ -127,7 +128,7 @@ export const ArtistInfo = memo(({ id }: { id: string }) => {
                 className="h-[24px] w-[24px]"
               />
             </div>
-            {data && data.followerCount > 0 && (
+            {data && parseInt(data.followerCount as string) > 0 && (
               <p
                 data-testid="artist-followers"
                 className="text-md font-medium leading-5 text-neutral-400 sm:leading-7"
@@ -135,7 +136,7 @@ export const ArtistInfo = memo(({ id }: { id: string }) => {
                 {intlFormatter.format(Number(data.followerCount))}
               </p>
             )}
-            {data && data.fanCount > 0 && (
+            {data && parseInt(data.fanCount) > 0 && (
               <p
                 data-testid="artist-fans"
                 className="text-sm font-medium text-neutral-400 sm:leading-6"
@@ -224,7 +225,10 @@ ArtistInfo.displayName = "ArtistInfo";
 export const ArtistAlbums = memo(({ id }: { id: string }) => {
   const { data }: UseQueryResult<AlbumById[]> = useQuery({
     queryKey: ["artistalbums", id],
-    queryFn: () => getArtistAlbums(id),
+    queryFn: async () => {
+      if (!id) return [];
+      return (await getArtistAlbums(id)) as AlbumById[];
+    },
     enabled: !!id,
     throwOnError: true,
     refetchOnReconnect: "always",
@@ -233,13 +237,14 @@ export const ArtistAlbums = memo(({ id }: { id: string }) => {
     gcTime: 1000 * 60 * 10,
   });
 
+  if (!data) return null;
   return (
     <Suspense fallback={<ArtistAlbumFallback />}>
       <div
         data-testid="artist-albums"
         className="h-[240px] w-full px-4 py-3 pb-12"
       >
-        <h2 className="text-xl font-semibold text-white">Albums</h2>
+        <h2 className="text-base font-medium text-white xl:text-lg">Albums</h2>
         <ul
           data-testid="albums-container"
           className="mx-auto mt-2.5 flex h-full w-full cursor-pointer items-center justify-start overflow-y-hidden overflow-x-scroll"
@@ -330,10 +335,12 @@ export const ArtistSongs = memo(({ id }: { id: string }) => {
         data-testid="artist-songs"
         className="max-h-auto h-full w-full px-4 py-2 pb-20"
       >
-        <h2 className="pb-2 text-xl font-semibold text-white">Songs</h2>
+        <h2 className="pb-2 text-sm font-medium text-white xl:text-lg">
+          Songs
+        </h2>
         <ul
           id="artist-songs-list"
-          className="max-h-auto mx-auto mt-1 h-[60dvh] w-full overflow-hidden bg-neutral-900 pb-28 sm:pb-20"
+          className="max-h-auto mx-auto mt-1 h-[65dvh] w-full overflow-hidden bg-neutral-900 pb-28 sm:pb-20"
         >
           {data ? (
             data.map((song: TrackDetails, i: number) => (

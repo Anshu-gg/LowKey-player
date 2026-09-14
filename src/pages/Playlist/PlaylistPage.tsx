@@ -1,8 +1,16 @@
-import { lazy, memo, startTransition, Suspense, useMemo, useRef } from "react";
+import {
+  lazy,
+  memo,
+  startTransition,
+  Suspense,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { preconnect, preload } from "react-dom";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { useBoundStore } from "../../store/store";
+import { useBoundStore } from "../../modules/hooks";
 const fallback = "/fallbacks/playlist-fallback.webp";
 import favorite from "../../assets/svgs/icons8-heart.svg";
 import favorited from "../../assets/svgs/icons8-favorited.svg";
@@ -12,16 +20,22 @@ import addPlaylist from "../../assets/svgs/icons8-addplaylist-28.svg";
 import addedToPlaylist from "../../assets/svgs/tick.svg";
 import { Image, PlaylistById, TrackDetails } from "../../types/GlobalTypes";
 import { getPlaylistData } from "../../api/requests";
-import useClearTimer from "../../hooks/useClearTimer";
-import { cleanString } from "../../helpers/cleanString";
-import { animateScreen } from "../../helpers/animateScreen";
-import handleCollectionPlayback from "../../helpers/handleCollectionPlayback";
+import { useClearTimer } from "../../modules/hooks";
+import {
+  sanitizeString,
+  fadeScreen,
+  playCollection,
+} from "../../modules/helpers";
 import ListLoading from "./Loading";
 const RouteNav = lazy(() => import("../../components/RouteNav/RouteNav"));
 const Song = lazy(() => import("../../components/Song/Song"));
 const ShuffleButton = lazy(
   () => import("../../components/ShuffleButton/ShuffleButton"),
 );
+
+const { cleanString } = await sanitizeString();
+const { animateScreen } = await fadeScreen();
+const handleCollectionPlayback = await playCollection();
 
 preconnect("https://lowkeymusic-v2.netlify.app");
 
@@ -32,7 +46,10 @@ export default function PlaylistPage() {
 
   const { data } = useQuery({
     queryKey: ["playlistPage", id],
-    queryFn: () => id && getPlaylistData(id),
+    queryFn: async () => {
+      if (!id) return null;
+      return (await getPlaylistData(id)) as PlaylistById;
+    },
     enabled: !!id,
     throwOnError: true,
     refetchOnReconnect: "always",
@@ -45,145 +62,149 @@ export default function PlaylistPage() {
     timerRef.current = animateScreen(playEl);
   }
 
-  useClearTimer(timerRef);
-
+  useClearTimer.default(timerRef);
+  if (!data) return null;
   return (
     <Suspense fallback={<ListLoading />}>
       <div
         data-testid="playlist-page"
         ref={playEl}
-        className="home-fadeout relative h-full w-full overflow-x-hidden overflow-y-scroll scroll-smooth pb-20 duration-100 ease-in-out"
+        className="home-fadeout relative h-full w-full overflow-x-hidden overflow-y-scroll scroll-smooth pb-20 duration-200 ease-in-out"
       >
         <div className="relative flex h-auto w-full flex-col items-center justify-center bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-black via-neutral-950 to-neutral-700 p-3 sm:h-[223px] sm:p-4">
           <div className="absolute right-2 top-2 h-auto w-auto">
             <RouteNav />
           </div>
           <PlaylistInfo
-            images={data?.image}
-            name={data?.name}
+            images={data.image}
+            name={data.name}
             handleImageLoad={handleImageLoad}
           />
           <div className="flex h-auto w-full items-center justify-between sm:mt-2">
             <PlaylistCount
-              followerCount={data?.followerCount}
-              songCount={data?.songCount}
+              followerCount={data.followerCount}
+              songCount={data.songCount}
             />
             <PlaylistControls playlist={data} />
           </div>
         </div>
-        <PlaylistTracks songs={data?.songs} />
+        <PlaylistTracks songs={data.songs} />
       </div>
     </Suspense>
   );
 }
 
-const PlaylistControls = memo(({ playlist }: { playlist: PlaylistById }) => {
-  const playlists = useBoundStore((state) => state.favorites.playlists);
-  const libraryPlaylists = useBoundStore((state) => state.library.playlists);
-  const setFavoritePlaylist = useBoundStore(
-    (state) => state.setFavoritePlaylist,
-  );
-  const removeFavoritePlaylist = useBoundStore(
-    (state) => state.removeFavoritePlaylist,
-  );
-  const setLibraryPlaylist = useBoundStore((state) => state.setLibraryPlaylist);
-  const removeLibraryPlaylist = useBoundStore(
-    (state) => state.removeLibraryPlaylist,
-  );
-  const isAdded = useMemo(
-    () => libraryPlaylists.some((p) => p?.id === playlist?.id),
-    [libraryPlaylists, playlist],
-  );
-  const isFavorite = useMemo(
-    () => playlists.some((p: PlaylistById) => p.id === playlist?.id),
-    [playlist, playlists],
-  );
+const PlaylistControls = memo(
+  ({ playlist }: { playlist?: PlaylistById | null }) => {
+    const playlists = useBoundStore((state) => state.favorites.playlists);
+    const libraryPlaylists = useBoundStore((state) => state.library.playlists);
+    const setFavoritePlaylist = useBoundStore(
+      (state) => state.setFavoritePlaylist,
+    );
+    const removeFavoritePlaylist = useBoundStore(
+      (state) => state.removeFavoritePlaylist,
+    );
+    const setLibraryPlaylist = useBoundStore(
+      (state) => state.setLibraryPlaylist,
+    );
+    const removeLibraryPlaylist = useBoundStore(
+      (state) => state.removeLibraryPlaylist,
+    );
+    const isAdded = useMemo(
+      () => libraryPlaylists?.some((p) => p?.id === playlist?.id),
+      [libraryPlaylists, playlist],
+    );
+    const isFavorite = useMemo(
+      () => playlists?.some((p: PlaylistById) => p.id === playlist?.id),
+      [playlist, playlists],
+    );
 
-  const handlePlaylist = (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
-  ) => {
-    e.stopPropagation();
-    if (playlist && isAdded) {
-      removeLibraryPlaylist(playlist.id);
-    } else {
-      setLibraryPlaylist(playlist);
-    }
-  };
+    const handlePlaylist = useCallback(
+      (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+        e.stopPropagation();
+        if (!playlist) return;
+        if (isAdded) {
+          removeLibraryPlaylist(playlist.id);
+        } else {
+          setLibraryPlaylist(playlist);
+        }
+      },
+      [isAdded, playlist, removeLibraryPlaylist, setLibraryPlaylist],
+    );
 
-  const handleFavorite = (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
-  ) => {
-    e.stopPropagation();
-    if (playlist !== null) {
-      if (isFavorite) {
-        removeFavoritePlaylist(playlist.id);
-      } else {
-        setFavoritePlaylist(playlist);
-      }
-    }
-  };
+    const handleFavorite = useCallback(
+      (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+        e.stopPropagation();
+        if (playlist != null) {
+          if (isFavorite) {
+            removeFavoritePlaylist(playlist.id);
+          } else {
+            setFavoritePlaylist(playlist);
+          }
+        }
+      },
+      [isFavorite, playlist, removeFavoritePlaylist, setFavoritePlaylist],
+    );
 
-  return (
-    <div
-      data-testid="playlist-controls"
-      className="mr-1 flex w-[170px] items-center justify-between sm:mr-0"
-    >
-      <ShuffleButton />
-      <button
-        data-testid="add-btn"
-        type="button"
-        tabIndex={0}
-        aria-label={isAdded ? "Remove from Library" : "Add to Library"}
-        onClick={handlePlaylist}
-        className="border border-white bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+    return (
+      <div
+        data-testid="playlist-controls"
+        className="mr-1 flex w-[170px] items-center justify-between sm:mr-0"
       >
-        <img
-          data-testid="add-icon"
-          src={isAdded ? addedToPlaylist : addPlaylist}
-          alt={isAdded ? "Added to library" : "Add to library"}
-          className="h-6 w-6"
-          aria-hidden="true"
-        />
-      </button>
-      <button
-        data-testid="playlist-favorite-btn"
-        type="button"
-        tabIndex={0}
-        aria-label={isFavorite ? "Remove from Favorites" : "Add to Favorites"}
-        onClick={handleFavorite}
-        className="border border-white bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
-      >
-        <img
-          data-testid="favorite-icon"
-          src={isFavorite ? favorited : favorite}
-          alt={isFavorite ? "Favorited" : "Favorite"}
-          className="h-[28px] w-[28px]"
-          aria-hidden="true"
-        />
-      </button>
-      <PlaylistPlayButton playlist={playlist} />
-    </div>
-  );
-});
+        <ShuffleButton />
+        <button
+          data-testid="add-btn"
+          type="button"
+          tabIndex={0}
+          aria-label={isAdded ? "Remove from Library" : "Add to Library"}
+          onClick={handlePlaylist}
+          className="border border-white bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+        >
+          <img
+            data-testid="add-icon"
+            src={isAdded ? addedToPlaylist : addPlaylist}
+            alt={isAdded ? "Added to library" : "Add to library"}
+            className="h-6 w-6"
+            aria-hidden="true"
+          />
+        </button>
+        <button
+          data-testid="playlist-favorite-btn"
+          type="button"
+          tabIndex={0}
+          aria-label={isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+          onClick={handleFavorite}
+          className="border border-white bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+        >
+          <img
+            data-testid="favorite-icon"
+            src={isFavorite ? favorited : favorite}
+            alt={isFavorite ? "Favorited" : "Favorite"}
+            className="h-[28px] w-[28px]"
+            aria-hidden="true"
+          />
+        </button>
+        <PlaylistPlayButton playlist={playlist} />
+      </div>
+    );
+  },
+);
 PlaylistControls.displayName = "PlaylistControls";
 
-const PlaylistPlayButton = ({ playlist }: { playlist: PlaylistById }) => {
-  const setNowPlaying = useBoundStore((state) => state.setNowPlaying);
-  const setIsPlaying = useBoundStore((state) => state.setIsPlaying);
-  const queue = useBoundStore((state) => state.nowPlaying.queue);
-  const setQueue = useBoundStore((state) => state.setQueue);
-  const inQueue = queue?.id === playlist?.id;
-  const isPlaying = useBoundStore((state) => state.nowPlaying.isPlaying);
-  const isPlaylistPlaying = isPlaying && queue?.name === playlist?.name;
-  return (
-    <button
-      type="button"
-      data-testid="playlist-playback"
-      tabIndex={playlist ? 0 : -1}
-      aria-label={isPlaylistPlaying ? "Pause playlist" : "Play playlist"}
-      onClick={(e) =>
-        playlist &&
-        handleCollectionPlayback(
+const PlaylistPlayButton = memo(
+  ({ playlist }: { playlist?: PlaylistById | null }) => {
+    const setNowPlaying = useBoundStore((state) => state.setNowPlaying);
+    const setIsPlaying = useBoundStore((state) => state.setIsPlaying);
+    const queue = useBoundStore((state) => state.nowPlaying.queue);
+    const setQueue = useBoundStore((state) => state.setQueue);
+    const inQueue = queue?.id === playlist?.id;
+    const isPlaying = useBoundStore((state) => state.nowPlaying.isPlaying);
+    const isPlaylistPlaying = isPlaying && queue?.name === playlist?.name;
+
+    const handlePlaylistPlay = useCallback(
+      (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+        if (!playlist) return;
+        handleCollectionPlayback.default(
           e,
           playlist,
           startTransition,
@@ -192,21 +213,33 @@ const PlaylistPlayButton = ({ playlist }: { playlist: PlaylistById }) => {
           setQueue,
           setNowPlaying,
           setIsPlaying,
-        )
-      }
-      className="rounded-full bg-emerald-400 p-1 focus:outline-none focus-visible:ring-4 focus-visible:ring-black"
-      disabled={!playlist}
-    >
-      <img
-        data-testid="playlist-playback-icon"
-        src={isPlaylistPlaying ? pause : play}
-        alt={isPlaylistPlaying ? "Pause" : "Play"}
-        className="h-7 w-7"
-        aria-hidden="true"
-      />
-    </button>
-  );
-};
+        );
+      },
+      [inQueue, isPlaying, playlist, setIsPlaying, setNowPlaying, setQueue],
+    );
+
+    return (
+      <button
+        type="button"
+        data-testid="playlist-playback"
+        tabIndex={playlist ? 0 : -1}
+        aria-label={isPlaylistPlaying ? "Pause playlist" : "Play playlist"}
+        onClick={handlePlaylistPlay}
+        className="rounded-full bg-emerald-400 p-1 focus:outline-none focus-visible:ring-4 focus-visible:ring-black"
+        disabled={!playlist}
+      >
+        <img
+          data-testid="playlist-playback-icon"
+          src={isPlaylistPlaying ? pause : play}
+          alt={isPlaylistPlaying ? "Pause" : "Play"}
+          className="h-7 w-7"
+          aria-hidden="true"
+        />
+      </button>
+    );
+  },
+);
+PlaylistPlayButton.displayName = "PlaylistPlayButton";
 
 const PlaylistInfo = memo(
   ({

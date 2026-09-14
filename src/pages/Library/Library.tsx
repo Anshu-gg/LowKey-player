@@ -2,23 +2,22 @@ import {
   lazy,
   memo,
   startTransition,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { useBoundStore } from "../../store/store";
+import { useBoundStore } from "../../modules/hooks";
 import close from "../../assets/svgs/close.svg";
 import play from "../../assets/svgs/play-icon.svg";
 import pause from "../../assets/svgs/pause-icon.svg";
 const artistfallback = "/fallbacks/artist-fallback.png";
 const userplaylist = "/fallbacks/playlist-fallback.webp";
 import playlistIcon from "../../assets/svgs/playlist-icon.svg";
-import useClearTimer from "../../hooks/useClearTimer";
-import { animateScreen } from "../../helpers/animateScreen";
-import { saveToLocalStorage } from "../../helpers/saveToLocalStorage";
-import handleCollectionPlayback from "../../helpers/handleCollectionPlayback";
+import { useClearTimer } from "../../modules/hooks";
+import { fadeScreen, playCollection, saveLocal } from "../../modules/helpers";
 import {
   AlbumById,
   ArtistInSong,
@@ -31,6 +30,9 @@ const RouteNav = lazy(() => import("../../components/RouteNav/RouteNav"));
 const FollowButton = lazy(
   () => import("../../components/FollowButton/FollowButton"),
 );
+const { animateScreen } = await fadeScreen();
+const { saveToLocalStorage } = await saveLocal();
+const handleCollectionPlayback = await playCollection();
 
 export default function Library() {
   const setRevealCreation = useBoundStore((state) => state.setRevealCreation);
@@ -60,7 +62,7 @@ export default function Library() {
     }, 150);
   }
 
-  useClearTimer(timerRef);
+  useClearTimer.default(timerRef);
   useEffect(() => {
     timerRef.current = animateScreen(libElRef);
     setHydrated(true);
@@ -321,28 +323,21 @@ const CustomPlaylist = memo(
 );
 CustomPlaylist.displayName = "CustomPlaylist";
 
-const HoverPlayButton = ({
-  playlist,
-}: {
-  playlist: UserPlaylist | PlaylistById;
-}) => {
-  const isPlaying = useBoundStore((state) => state.nowPlaying.isPlaying);
-  const setIsPlaying = useBoundStore((state) => state.setIsPlaying);
-  const setNowPlaying = useBoundStore((state) => state.setNowPlaying);
-  const setQueue = useBoundStore((state) => state.setQueue);
-  const queue = useBoundStore((state) => state.nowPlaying.queue);
-  const inQueue = useMemo(
-    () => queue !== null && queue.id === String(playlist.id),
-    [playlist.id, queue],
-  );
+const HoverPlayButton = memo(
+  ({ playlist }: { playlist: UserPlaylist | PlaylistById }) => {
+    const isPlaying = useBoundStore((state) => state.nowPlaying.isPlaying);
+    const setIsPlaying = useBoundStore((state) => state.setIsPlaying);
+    const setNowPlaying = useBoundStore((state) => state.setNowPlaying);
+    const setQueue = useBoundStore((state) => state.setQueue);
+    const queueName = useBoundStore((state) => state.nowPlaying.queue?.name);
+    const inQueue = useMemo(
+      () => queueName === String(playlist.name),
+      [playlist.name, queueName],
+    );
 
-  return (
-    <button
-      type="button"
-      data-testid="hover-playlist-btn"
-      className="mx-2 rounded-full bg-emerald-400 p-2"
-      onClick={(e) =>
-        handleCollectionPlayback(
+    const playCollection = useCallback(
+      (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+        handleCollectionPlayback.default(
           e,
           {
             id: String(playlist.id),
@@ -356,17 +351,28 @@ const HoverPlayButton = ({
           setQueue,
           setNowPlaying,
           setIsPlaying,
-        )
-      }
-    >
-      <img
-        src={isPlaying && inQueue ? pause : play}
-        alt="play album"
-        className="h-7 w-7"
-      />
-    </button>
-  );
-};
+        );
+      },
+      [inQueue, isPlaying, playlist, setIsPlaying, setNowPlaying, setQueue],
+    );
+
+    return (
+      <button
+        type="button"
+        data-testid="hover-playlist-btn"
+        className="mx-2 rounded-full bg-emerald-400 p-2"
+        onClick={playCollection}
+      >
+        <img
+          src={isPlaying && inQueue ? pause : play}
+          alt="play album"
+          className="h-7 w-7"
+        />
+      </button>
+    );
+  },
+);
+HoverPlayButton.displayName = "HoverPlayButton";
 
 const LibraryAlbums = memo(
   ({
@@ -424,11 +430,13 @@ const LibraryAlbum = memo(
           username={""}
           firstname={""}
           lastname={""}
-          language={""}
           image={album.image}
           url={album.url}
           songs={[]}
           fadeOutNavigate={fadeOutNavigate}
+          followerCount={""}
+          fanCount={""}
+          shares={""}
         />
         <div className="absolute left-0 top-0 -ml-2 flex h-[150px] w-full items-center justify-center opacity-0 transition-all ease-in hover:opacity-100 group-hover:bg-[#0000004b]">
           <AlbumHoverPlayButton album={album} />
@@ -460,10 +468,31 @@ const AlbumHoverPlayButton = ({ album }: { album: AlbumById }) => {
   const setIsPlaying = useBoundStore((state) => state.setIsPlaying);
   const setNowPlaying = useBoundStore((state) => state.setNowPlaying);
   const setQueue = useBoundStore((state) => state.setQueue);
-  const queue = useBoundStore((state) => state.nowPlaying.queue);
+  const queueName = useBoundStore((state) => state.nowPlaying.queue?.name);
   const inQueue = useMemo(
-    () => queue !== null && queue.name === String(album.name),
-    [album.name, queue],
+    () => queueName === String(album.name),
+    [album.name, queueName],
+  );
+
+  const playCollection = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      handleCollectionPlayback.default(
+        e,
+        {
+          id: String(album.id),
+          image: false,
+          name: album.name,
+          songs: album.songs,
+        },
+        startTransition,
+        isPlaying,
+        inQueue,
+        setQueue,
+        setNowPlaying,
+        setIsPlaying,
+      );
+    },
+    [inQueue, isPlaying, album, setIsPlaying, setNowPlaying, setQueue],
   );
 
   return (
@@ -471,18 +500,7 @@ const AlbumHoverPlayButton = ({ album }: { album: AlbumById }) => {
       type="button"
       data-testid="album-play-btn"
       className="rounded-full bg-emerald-400 p-2"
-      onClick={(e) =>
-        handleCollectionPlayback(
-          e,
-          album,
-          startTransition,
-          isPlaying,
-          inQueue,
-          setQueue,
-          setNowPlaying,
-          setIsPlaying,
-        )
-      }
+      onClick={playCollection}
     >
       <img
         src={isPlaying && inQueue ? pause : play}
@@ -554,11 +572,13 @@ const LibraryPlaylist = memo(
           username={playlist.username}
           firstname={playlist.firstname}
           lastname={playlist.lastname}
-          language={""}
           image={playlist.image}
           url={playlist.url}
           songs={[]}
           fadeOutNavigate={fadeOutNavigate}
+          followerCount={""}
+          fanCount={""}
+          shares={""}
         />
         <div className="absolute left-0 top-0 -ml-2 flex h-[150px] w-full items-center justify-center opacity-0 transition-all ease-in group-hover:opacity-100">
           <HoverPlayButton playlist={playlist} />

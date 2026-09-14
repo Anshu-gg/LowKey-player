@@ -1,19 +1,27 @@
-import { lazy, memo, startTransition, useEffect, useMemo, useRef } from "react";
+import {
+  lazy,
+  memo,
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { preload } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { useBoundStore } from "../../store/store";
 import play from "../../assets/svgs/play-icon.svg";
 import pause from "../../assets/svgs/pause-icon.svg";
 const favoritesImg = "/favorites.webp";
 const fallback = "/fallbacks/playlist-fallback.webp";
 import close from "../../assets/svgs/close.svg";
 import { AlbumById, PlaylistById, TrackDetails } from "../../types/GlobalTypes";
-import useClearTimer from "../../hooks/useClearTimer";
-import { animateScreen } from "../../helpers/animateScreen";
-import { saveToLocalStorage } from "../../helpers/saveToLocalStorage";
-import handleCollectionPlayback from "../../helpers/handleCollectionPlayback";
+import { useBoundStore, useClearTimer } from "../../modules/hooks";
+import { fadeScreen, playCollection, saveLocal } from "../../modules/helpers";
 const Song = lazy(() => import("../../components/Song/Song"));
 const RouteNav = lazy(() => import("../../components/RouteNav/RouteNav"));
+const { animateScreen } = await fadeScreen();
+const { saveToLocalStorage } = await saveLocal();
+const handleCollectionPlayback = await playCollection();
 
 preload(favoritesImg, {
   as: "image",
@@ -35,7 +43,7 @@ export default function Favorites() {
     });
   }, [albums, playlists, songs]);
 
-  useClearTimer(timerRef);
+  useClearTimer.default(timerRef);
   useEffect(() => {
     timerRef.current = animateScreen(favEl);
   }, []);
@@ -59,6 +67,7 @@ export default function Favorites() {
             }}
             fetchPriority="high"
             loading="eager"
+            decoding="async"
             className="mr-4 h-[150px] w-[150px]"
           />
           <p className="mt-1 line-clamp-1 h-auto w-[80%] text-ellipsis text-left text-xl font-semibold text-white sm:line-clamp-3 sm:w-[40%] sm:text-3xl sm:font-bold">
@@ -67,7 +76,9 @@ export default function Favorites() {
         </div>
         <FavoriteControls />
       </div>
-      {albums.length === 0 && playlists.length === 0 && songs.length === 0 ? (
+      {albums?.length === 0 &&
+      playlists?.length === 0 &&
+      songs?.length === 0 ? (
         <div
           data-testid="no-favorites"
           className="flex min-h-[80dvh] w-full items-center justify-center bg-neutral-900"
@@ -76,9 +87,9 @@ export default function Favorites() {
         </div>
       ) : (
         <div className="h-auto min-h-[80dvh] w-full bg-neutral-900">
-          {songs.length > 0 ? <FavoriteSongs /> : null}
-          {albums.length > 0 ? <FavoriteAlbums /> : null}
-          {playlists.length > 0 ? <FavoritePlaylists /> : null}
+          {songs?.length > 0 ? <FavoriteSongs /> : null}
+          {albums?.length > 0 ? <FavoriteAlbums /> : null}
+          {playlists?.length > 0 ? <FavoritePlaylists /> : null}
         </div>
       )}
     </div>
@@ -96,19 +107,45 @@ const FavoriteControls = memo(() => {
   const setIsShuffling = useBoundStore((state) => state.setIsShuffling);
   const isPlaying = useBoundStore((state) => state.nowPlaying.isPlaying);
   const inQueue = useMemo(
-    () => favorites.songs.some((song) => queueSongs?.includes(song)),
+    () => favorites.songs?.some((song) => queueSongs?.includes(song)),
     [favorites.songs, queueSongs],
   );
   const isFavoritePlaying =
     isPlaying && favorites.songs?.some((song) => song.id === id);
   const shuffleStatus = isShuffling ? "fill-emerald-500" : "fill-white";
 
-  const favoriteCollection = {
-    id: "",
-    name: "Favorites",
-    image: false,
-    songs: favorites.songs,
-  };
+  const favoriteCollection = useMemo(() => {
+    return {
+      id: "",
+      name: "Favorites",
+      image: false,
+      songs: favorites.songs,
+    };
+  }, [favorites.songs]);
+
+  const playFavorites = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.stopPropagation();
+      handleCollectionPlayback.default(
+        e,
+        favoriteCollection,
+        startTransition,
+        isPlaying,
+        inQueue,
+        setQueue,
+        setNowPlaying,
+        setIsPlaying,
+      );
+    },
+    [
+      favoriteCollection,
+      inQueue,
+      isPlaying,
+      setIsPlaying,
+      setNowPlaying,
+      setQueue,
+    ],
+  );
 
   return (
     <div
@@ -152,18 +189,7 @@ const FavoriteControls = memo(() => {
         tabIndex={favorites.songs.length > 0 ? 0 : -1}
         title="Play button"
         aria-label={isFavoritePlaying ? "Pause favorites" : "Play favorites"}
-        onClick={(e) =>
-          handleCollectionPlayback(
-            e,
-            favoriteCollection,
-            startTransition,
-            isPlaying,
-            inQueue,
-            setQueue,
-            setNowPlaying,
-            setIsPlaying,
-          )
-        }
+        onClick={playFavorites}
         className="flex-shrink-0 rounded-full bg-emerald-400 p-1 focus:outline-none focus:ring-4 focus:ring-black"
         disabled={favorites.songs.length === 0}
       >
@@ -217,7 +243,7 @@ const FavoriteAlbum = ({
 }: {
   album: AlbumById;
   i: number;
-   
+
   setNowPlaying: (data: TrackDetails | null) => void;
 }) => {
   const navigate = useNavigate();
@@ -232,6 +258,23 @@ const FavoriteAlbum = ({
   const inQueue = useMemo(
     () => queue !== null && queue.name === album.name,
     [album.name, queue],
+  );
+
+  const playFavoriteAlbum = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.stopPropagation();
+      handleCollectionPlayback.default(
+        e,
+        album,
+        startTransition,
+        isPlaying,
+        inQueue,
+        setQueue,
+        setNowPlaying,
+        setIsPlaying,
+      );
+    },
+    [album, inQueue, isPlaying, setIsPlaying, setNowPlaying, setQueue],
   );
 
   useEffect(() => {
@@ -279,19 +322,7 @@ const FavoriteAlbum = ({
               ? "Pause album"
               : "Play album"
           }
-          onClick={(e) => {
-            e.stopPropagation();
-            handleCollectionPlayback(
-              e,
-              album,
-              startTransition,
-              isPlaying,
-              inQueue,
-              setQueue,
-              setNowPlaying,
-              setIsPlaying,
-            );
-          }}
+          onClick={playFavoriteAlbum}
         >
           <img
             src={isPlaying && album.name === queue?.name ? pause : play}
@@ -360,6 +391,23 @@ const FavoritePlaylist = ({
   );
   const playlistImgEl = useRef<HTMLImageElement>(null);
 
+  const playFavoritePlaylist = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.stopPropagation();
+      handleCollectionPlayback.default(
+        e,
+        playlist,
+        startTransition,
+        isPlaying,
+        inQueue,
+        setQueue,
+        setNowPlaying,
+        setIsPlaying,
+      );
+    },
+    [playlist, inQueue, isPlaying, setIsPlaying, setNowPlaying, setQueue],
+  );
+
   useEffect(() => {
     const timer = setTimeout(() => {
       playlistImgEl.current?.classList.remove("image-fadeout");
@@ -404,19 +452,7 @@ const FavoritePlaylist = ({
               ? "Pause playlist"
               : "Play playlist"
           }
-          onClick={(e) => {
-            e.stopPropagation();
-            handleCollectionPlayback(
-              e,
-              playlist,
-              startTransition,
-              isPlaying,
-              inQueue,
-              setQueue,
-              setNowPlaying,
-              setIsPlaying,
-            );
-          }}
+          onClick={playFavoritePlaylist}
         >
           <img
             src={isPlaying && playlist.name === queue?.name ? pause : play}

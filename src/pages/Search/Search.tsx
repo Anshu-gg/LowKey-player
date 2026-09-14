@@ -1,7 +1,7 @@
- 
-import { lazy, memo, useEffect, useRef } from "react";
+import { lazy, memo, useCallback, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useBoundStore } from "../../store/store";
+import { useShallow } from "zustand/shallow";
 const fallback = "/fallbacks/playlist-fallback.webp";
 const songfallback = "/fallbacks/song-fallback.webp";
 const artistfallback = "/fallbacks/artist-fallback.png";
@@ -19,19 +19,36 @@ const Searchbar = lazy(() => import("../../components/Searchbar/Searchbar"));
 const RouteNav = lazy(() => import("../../components/RouteNav/RouteNav"));
 
 export default function Search() {
-  const search = useBoundStore((state) => state.search);
-  const setNowPlaying = useBoundStore((state) => state.setNowPlaying);
-  const setIsPlaying = useBoundStore((state) => state.setIsPlaying);
-  const setSearch = useBoundStore((state) => state.setSearch);
+  const {
+    topQuery,
+    albums,
+    artists,
+    playlists,
+    songs,
+    setNowPlaying,
+    setIsPlaying,
+    setSearch,
+  } = useBoundStore(
+    useShallow((state) => ({
+      topQuery: state.search.topQuery,
+      albums: state.search.albums,
+      artists: state.search.artists,
+      playlists: state.search.playlists,
+      songs: state.search.songs,
+      setNowPlaying: state.setNowPlaying,
+      setIsPlaying: state.setIsPlaying,
+      setSearch: state.setSearch,
+    })),
+  );
   const searchEl = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { topQuery, albums, artists, playlists, songs } = search; 
-  const timerRef = useRef<NodeJS.Timeout>(null);
   const topQueryResults = topQuery !== null && topQuery.results.length > 0;
   const albumsResults = albums !== null && albums.results.length > 0;
   const artistsResults = artists !== null && artists.results.length > 0;
   const playlistsResults = playlists !== null && playlists.results.length > 0;
   const songsResults = songs !== null && songs.results.length > 0;
+  const timerRef = useRef<NodeJS.Timeout>(null);
+
   const isResults =
     topQueryResults ||
     albumsResults ||
@@ -39,22 +56,23 @@ export default function Search() {
     playlistsResults ||
     songsResults;
 
-  const navigateQuery = (type: string, id: string) => {
-    if (type === "artist") {
-      navigate(`/artists/${id}`);
-    }
-    if (type === "song") {
-      fetch(`https://lowkey-backend.vercel.app/api/songs/${id}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && (data.data[0] as TrackDetails)) {
-            setNowPlaying(data.data[0]);
-            setIsPlaying(true);
-          }
-        })
-        .catch((err) => console.log(err));
-    }
-  };
+  const navigateQuery = useCallback(
+    (type: string, id: string) => {
+      if (type === "artist") navigate(`/artists/${id}`);
+      if (type === "song") {
+        fetch(`https://lowkey-backend.vercel.app/api/songs/${id}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && (data.data[0] as TrackDetails)) {
+              setNowPlaying(data.data[0]);
+              setIsPlaying(true);
+            }
+          })
+          .catch((err) => console.error(err));
+      }
+    },
+    [navigate, setNowPlaying, setIsPlaying],
+  );
 
   useEffect(() => {
     timerRef.current = animateScreen(searchEl);
@@ -73,7 +91,7 @@ export default function Search() {
       ref={searchEl}
       className="home-fadeout h-full w-full overflow-x-hidden overflow-y-scroll scroll-smooth bg-neutral-900 px-3 duration-200 ease-in"
     >
-      <div className="flex w-[95%] items-center bg-inherit pb-6 pt-4 mx-auto">
+      <div className="mx-auto flex w-[95%] items-center bg-inherit pb-6 pt-4">
         <Searchbar />
         <RouteNav />
       </div>
@@ -83,11 +101,25 @@ export default function Search() {
             data-testid="results-container"
             className="h-auto w-full px-3 pb-20 md:w-[96.5%] md:px-10 lg:w-[80%]"
           >
-            {topQueryResults && <TopQuery navigateQuery={navigateQuery} />}
-            {songsResults && <QuerySongs navigateQuery={navigateQuery} />}
-            {playlistsResults && <QueryPlaylists />}
-            {albumsResults && <QueryAlbums />}
-            {artistsResults && <QueryArtists />}
+            {topQueryResults && (
+              <TopQuery
+                navigateQuery={navigateQuery}
+                topQuery={topQuery?.results ?? null}
+              />
+            )}
+            {songsResults && (
+              <QuerySongs
+                navigateQuery={navigateQuery}
+                songs={songs?.results ?? null}
+              />
+            )}
+            {playlistsResults && (
+              <QueryPlaylists playlists={playlists?.results ?? null} />
+            )}
+            {albumsResults && <QueryAlbums albums={albums?.results ?? null} />}
+            {artistsResults && (
+              <QueryArtists artists={artists?.results ?? null} />
+            )}
           </div>
         ) : (
           <div
@@ -108,10 +140,11 @@ export default function Search() {
 const TopQuery = memo(
   ({
     navigateQuery,
+    topQuery,
   }: {
-    navigateQuery: (type: string, id: string, res: QueryResult) => void;
+    navigateQuery: (type: string, id: string) => void;
+    topQuery: QueryResult[] | null;
   }) => {
-    const topQuery = useBoundStore((state) => state.search.topQuery?.results);
     const topEl = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -143,12 +176,12 @@ const TopQuery = memo(
               id={res.id}
               onClick={(e) => {
                 e.stopPropagation();
-                navigateQuery(res.type, res.id, res);
+                navigateQuery(res.type, res.id);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  navigateQuery(res.type, res.id, res);
+                  navigateQuery(res.type, res.id);
                 }
               }}
               data-testid="top-result"
@@ -157,7 +190,9 @@ const TopQuery = memo(
               className="flex h-[50px] w-full cursor-pointer items-center justify-start overflow-hidden bg-neutral-900 outline-none hover:bg-neutral-800 focus:bg-neutral-800"
             >
               <img
-                src={res.image[0]?.url || undefined}
+                src={res.image?.[0]?.url || undefined}
+                loading="lazy"
+                decoding="async"
                 alt={res.title ? cleanString(res.title) : "Unknown title"}
                 className="mr-4 h-[50px] w-[50px] rounded-sm"
               />
@@ -179,10 +214,11 @@ TopQuery.displayName = "TopQuery";
 const QuerySongs = memo(
   ({
     navigateQuery,
+    songs,
   }: {
     navigateQuery: (type: string, id: string) => void;
+    songs: SongAlbumResult[] | null;
   }) => {
-    const songs = useBoundStore((state) => state.search.songs?.results);
     return (
       <div
         data-testid="query-songs"
@@ -247,7 +283,7 @@ const SearchSong = memo(
         className="song-fadeout mb-4 flex h-auto w-full cursor-pointer items-center justify-start overflow-hidden bg-neutral-900 outline-none duration-150 ease-in hover:bg-neutral-800 focus:bg-neutral-800"
       >
         <img
-          src={song.image[0]?.url || songfallback}
+          src={song.image?.[0]?.url || songfallback}
           alt={song.title ? cleanString(song.title) : "Unknown song"}
           className="mr-4 h-[40px] w-[40px]"
           onError={(e) => (e.currentTarget.src = songfallback)}
@@ -272,22 +308,23 @@ const SearchSong = memo(
 );
 SearchSong.displayName = "SearchSong";
 
-const QueryPlaylists = memo(() => {
-  const playlists = useBoundStore((state) => state.search.playlists?.results);
-  return (
-    <div
-      data-testid="query-playlists"
-      className="mb-5 mt-2 h-auto w-full list-none"
-    >
-      <p className="mb-2 text-xs font-semibold text-white">Playlists</p>
-      <ul className="mb-2 flex h-auto w-full list-none items-center justify-start overflow-y-hidden overflow-x-scroll pb-10">
-        {playlists?.map((playlist: PlaylistResult, i) => (
-          <QueryPlaylist key={playlist.id} i={i} {...playlist} />
-        ))}
-      </ul>
-    </div>
-  );
-});
+const QueryPlaylists = memo(
+  ({ playlists }: { playlists: PlaylistResult[] | null }) => {
+    return (
+      <div
+        data-testid="query-playlists"
+        className="mb-5 mt-2 h-auto w-full list-none"
+      >
+        <p className="mb-2 text-xs font-semibold text-white">Playlists</p>
+        <ul className="mb-2 flex h-auto w-full list-none items-center justify-start overflow-y-hidden overflow-x-scroll pb-10">
+          {playlists?.map((playlist: PlaylistResult, i) => (
+            <QueryPlaylist key={playlist.id} i={i} {...playlist} />
+          ))}
+        </ul>
+      </div>
+    );
+  },
+);
 QueryPlaylists.displayName = "QueryPlaylists";
 
 const QueryPlaylist = memo(
@@ -314,10 +351,11 @@ const QueryPlaylist = memo(
           <img
             ref={qpImgEl}
             src={image[1] ? image[1].url : fallback}
+            loading="lazy"
+            decoding="async"
             width={150}
             height={150}
             fetchPriority="high"
-            loading="eager"
             alt={title ? cleanString(title) : "Unknown playlist"}
             className="image-fadeout h-[150px] w-[150px] shadow-md shadow-black duration-200 ease-in"
             onError={(e) => (e.currentTarget.src = fallback)}
@@ -335,9 +373,7 @@ const QueryPlaylist = memo(
 );
 QueryPlaylist.displayName = "QueryPlaylist";
 
-const QueryArtists = memo(() => {
-  const artists = useBoundStore((state) => state.search.artists?.results);
-
+const QueryArtists = memo(({ artists }: { artists: AlbumResult[] | null }) => {
   return (
     <div
       data-testid="query-artists"
@@ -393,9 +429,7 @@ const QueryArtist = ({ id, title, image, i }: AlbumResult & { i: number }) => {
   );
 };
 
-const QueryAlbums = () => {
-  const albums = useBoundStore((state) => state.search.albums?.results);
-
+const QueryAlbums = ({ albums }: { albums: SongAlbumResult[] | null }) => {
   return (
     <div
       data-testid="query-albums"

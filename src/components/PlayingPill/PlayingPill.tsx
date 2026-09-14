@@ -1,4 +1,3 @@
-import { useBoundStore } from "../../store/store";
 const songfallback = "/fallbacks/song-fallback.webp";
 import play from "../../assets/svgs/play-icon.svg";
 import pause from "../../assets/svgs/pause-icon.svg";
@@ -6,10 +5,13 @@ import add from "../../assets/svgs/icons8-addplaylist-28.svg";
 import favorite from "../../assets/svgs/icons8-heart.svg";
 import favorited from "../../assets/svgs/icons8-favorited.svg";
 import tick from "../../assets/svgs/icons8-tick.svg";
-import { toggleFavorite } from "../../helpers/toggleFavorite";
-import { memo, startTransition, useMemo } from "react";
+import { memo, startTransition, useCallback, useMemo } from "react";
 import { TrackDetails, UserPlaylist } from "../../types/GlobalTypes";
-import { cleanString } from "../../helpers/cleanString";
+import { sanitizeString, toggleFavorited } from "../../modules/helpers";
+import { useBoundStore } from "../../modules/hooks";
+
+const { cleanString } = await sanitizeString();
+const { toggleFavorite } = await toggleFavorited();
 
 export default function PlayingPill() {
   const track = useBoundStore((state) => state.nowPlaying.track);
@@ -39,6 +41,38 @@ const Pill = memo(({ track }: { track: TrackDetails }) => {
         });
       }),
     [userPlaylists, track?.id],
+  );
+
+  const handleAddToPlaylist = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.stopPropagation();
+      setCreationTrack(track);
+      setRevealCreation(true);
+    },
+    [setCreationTrack, setRevealCreation, track],
+  );
+
+  const handleToggleFavorite = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      if (!track) return;
+      toggleFavorite({
+        e,
+        track,
+        isFavorited,
+        setFavoriteSong,
+        removeFavorite,
+        startTransition,
+      });
+    },
+    [isFavorited, removeFavorite, setFavoriteSong, track],
+  );
+
+  const handlePlayClick = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.stopPropagation();
+      setIsPlaying(!isPlaying);
+    },
+    [isPlaying, setIsPlaying],
   );
 
   return (
@@ -77,11 +111,7 @@ const Pill = memo(({ track }: { track: TrackDetails }) => {
           <button
             data-testid="add-to-playlist-btn"
             className="h-auto w-auto px-1"
-            onClick={(e) => {
-              e.stopPropagation();
-              setCreationTrack(track);
-              setRevealCreation(true);
-            }}
+            onClick={handleAddToPlaylist}
           >
             <img
               src={playlist?.id ? tick : add}
@@ -91,17 +121,7 @@ const Pill = memo(({ track }: { track: TrackDetails }) => {
           </button>
           <button
             data-testid="favorite-btn"
-            onClick={(e) =>
-              track &&
-              toggleFavorite({
-                e,
-                track,
-                isFavorited,
-                setFavoriteSong,
-                removeFavorite,
-                startTransition,
-              })
-            }
+            onClick={handleToggleFavorite}
             className="border-none bg-transparent p-0 outline-none"
           >
             <img
@@ -112,10 +132,7 @@ const Pill = memo(({ track }: { track: TrackDetails }) => {
           </button>
           <button
             data-testid="play-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsPlaying(!isPlaying);
-            }}
+            onClick={handlePlayClick}
             style={{
               border: "none",
               outline: "none",

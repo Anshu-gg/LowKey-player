@@ -1,10 +1,15 @@
+import { memo, useEffect, useRef } from "react";
 import history from "../../assets/svgs/icons8-history.svg";
 import activity from "../../assets/svgs/icons8-activity.svg";
-import { useBoundStore } from "../../store/store";
-import { ActivityType, RecentTypes, TrackDetails } from "../../types/GlobalTypes";
+import {
+  ActivityType,
+  RecentTypes,
+  TrackDetails,
+} from "../../types/GlobalTypes";
+import { sanitizeString } from "../../modules/helpers";
+import { useBoundStore } from "../../modules/hooks";
 const songfallback = "/fallbacks/song-fallback.webp";
-import { cleanString } from "../../helpers/cleanString";
-import { memo, useEffect, useRef } from "react";
+const { cleanString } = await sanitizeString();
 
 const Recents = memo(() => {
   const recentTracks = useBoundStore((state) => state.recents.history);
@@ -28,12 +33,19 @@ const Recents = memo(() => {
   return (
     <div
       data-testid="recents"
-      className="hidden h-[95vh] flex-col items-center justify-start overflow-hidden border-r-[3px] border-black bg-neutral-950 xl:flex xl:w-[380px] 2xl:w-96"
+      className="hidden h-[95vh] shrink-0 flex-col items-center justify-start overflow-hidden border-r-[3px] border-black bg-neutral-950 lg:w-72 xl:flex 2xl:w-96"
     >
       <div className="flex h-[45vh] w-full flex-col items-start justify-start overflow-hidden border-b-2 border-black bg-neutral-800">
         <div className="flex h-12 w-full items-center justify-between border-b-2 border-neutral-900 bg-neutral-700 px-3">
-          <h2 className="w-full font-semibold text-white">Listening History</h2>
-          <img src={history} alt="history" className="h-[20px] w-[20px]" />
+          <h2 className="w-full text-sm font-medium text-white">
+            Listening History
+          </h2>
+          <img
+            src={history}
+            decoding="async"
+            alt="history"
+            className="h-[20px] w-[20px]"
+          />
         </div>
         <ul
           data-testid="recent-songs"
@@ -45,9 +57,14 @@ const Recents = memo(() => {
         </ul>
       </div>
       <div className="flex h-[49.8vh] w-full flex-col items-start justify-start overflow-hidden bg-neutral-800">
-        <div className="flex h-12 w-full items-center justify-between bg-neutral-700 px-3">
-          <h2 className="w-full font-semibold text-white">Activity</h2>
-          <img src={activity} alt="activity" className="h-[25px] w-[25px]" />
+        <div className="flex h-10 w-full items-center justify-between border-neutral-900 bg-neutral-700 px-3">
+          <h2 className="w-full text-sm font-medium text-white">Activity</h2>
+          <img
+            src={activity}
+            decoding="async"
+            alt="activity"
+            className="h-[20px] w-[20px]"
+          />
         </div>
         <ul
           data-testid="recent-activity"
@@ -87,11 +104,13 @@ const RecentSong = ({
       id={id}
       ref={recentEl}
       data-testid="recent-song"
-      className="song-fadeout mb-0.5 flex h-[50px] w-full flex-shrink-0 items-center justify-start overflow-hidden bg-black duration-200 ease-in"
+      className="song-fadeout mb-0.5 flex h-[50px] w-full flex-shrink-0 items-center justify-start overflow-hidden bg-neutral-900 duration-200 ease-in"
     >
       <img
         src={image[0] ? image[0].url : songfallback}
         alt={name}
+        loading="lazy"
+        decoding="async"
         onError={(e) => (e.currentTarget.src = songfallback)}
         className="mr-4 h-[50px] w-[50px] border-r border-black"
       />
@@ -109,7 +128,7 @@ const RecentSong = ({
   );
 };
 
-const Activity = ({ message, id, i }: ActivityType & { i: number }) => {
+const Activity = memo(({ message, id, i }: ActivityType & { i: number }) => {
   const activityEl = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
@@ -126,11 +145,12 @@ const Activity = ({ message, id, i }: ActivityType & { i: number }) => {
     <li
       data-testid={`activity-${id}`}
       ref={activityEl}
-      className="song-fadeout mb-0.5 line-clamp-1 flex h-[35px] w-full flex-shrink-0 items-center justify-start overflow-hidden text-ellipsis whitespace-nowrap bg-black px-2 duration-200 ease-in"
+      className="song-fadeout mb-0.5 line-clamp-1 flex h-[35px] w-full flex-shrink-0 items-center justify-start overflow-hidden text-ellipsis whitespace-nowrap bg-neutral-900 px-2 duration-200 ease-in"
     >
       <p className="mx-1 line-clamp-1 w-auto text-ellipsis text-xs font-semibold text-neutral-300">
         {message}
       </p>
     </li>
   );
-};
+});
+Activity.displayName = "Activity";

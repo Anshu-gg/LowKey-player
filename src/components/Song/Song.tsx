@@ -7,18 +7,23 @@ import {
   useRef,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { useBoundStore } from "../../store/store";
+import { useBoundStore, useIsFavorited } from "../../modules/hooks";
 import notfav from "../../assets/svgs/icons8-heart.svg";
 import fav from "../../assets/svgs/icons8-favorited.svg";
 const playing = "/gifs/play-animation.gif";
 import add from "../../assets/svgs/icons8-addplaylist-28.svg";
 import tick from "../../assets/svgs/tick.svg";
-import useIsFavorited from "../../hooks/useIsFavorited";
 const fallback = "/fallbacks/song-fallback.webp";
-import { cleanString } from "../../helpers/cleanString";
-import { toggleFavorite } from "../../helpers/toggleFavorite";
+import {
+  sanitizeString,
+  formatTime,
+  toggleFavorited,
+} from "../../modules/helpers";
 import { TrackDetails, UserPlaylist } from "../../types/GlobalTypes";
-import secondsToHMS from "../../helpers/secondsToHMS";
+
+const { cleanString } = await sanitizeString();
+const secondsToHMS = await formatTime();
+const { toggleFavorite } = await toggleFavorited();
 
 export default function Song({
   track,
@@ -108,6 +113,7 @@ export default function Song({
           height={50}
           fetchPriority="high"
           loading="eager"
+          decoding="async"
           className="image-fadeout mr-4 h-[50px] w-[50px] bg-black transition-all duration-200 ease-in"
           onError={(e) => (e.currentTarget.src = fallback)}
         />
@@ -138,9 +144,9 @@ export default function Song({
         <p
           ref={durationEl}
           data-testid="duration"
-          className={`${isWidgetSong ? "mr-[1vw] w-10 flex-shrink-0 sm:ml-[4vw] sm:mr-2 md:mx-[2vw] xmd:mx-[3vw] lg:mx-[1vw] xlg:ml-[1.5vw] xxl:mx-[0.5vw] 2xl:mx-2" : "m-[3vw] w-10 max-w-14 sm:ml-4 sm:mr-[2%] sm:block md:mx-[5%] xmd:mx-4 lg:mx-0 xlg:mx-[2vw] xl:mr-4"} song-fadeout text-xs font-normal text-white duration-200 ease-in`}
+          className={`${isWidgetSong ? "mr-[1vw] w-10 flex-shrink-0 sm:ml-[4vw] sm:mr-2 md:mx-[2vw] xmd:mx-[3vw] lg:mx-[1vw] xlg:ml-[1.5vw] xxl:mx-[0.5vw] 2xl:mx-2" : "m-[3vw] w-10 max-w-14 sm:ml-4 sm:mr-[2%] sm:block md:mx-[5%] xmd:mx-4 lg:mx-0 xlg:mx-[2vw] xl:mr-4"} song-fadeout text-[11px] font-normal text-white duration-200 ease-in`}
         >
-          {secondsToHMS(Number(track?.duration))}
+          {secondsToHMS.default(Number(track?.duration))}
         </p>
         <div className="mx-0 flex w-10 flex-grow-[0.08] basis-12 items-center justify-evenly space-x-3 sm:w-6 md:ml-2 lg:mx-6 lg:w-12 xlg:mx-[1vw]">
           {track ? <FavoriteButton key={track.name} track={track} /> : null}
@@ -152,9 +158,23 @@ export default function Song({
 }
 
 const FavoriteButton = ({ track }: { track: TrackDetails }) => {
-  const isFavorited = useIsFavorited(track.id);
+  const isFavorited = useIsFavorited.default(track.id);
   const setFavoriteSong = useBoundStore((state) => state.setFavoriteSong);
   const removeFavorite = useBoundStore((state) => state.removeFavorite);
+
+  const handleFavorite = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      toggleFavorite({
+        e,
+        track,
+        isFavorited,
+        setFavoriteSong,
+        removeFavorite,
+        startTransition,
+      });
+    },
+    [isFavorited, removeFavorite, setFavoriteSong, track],
+  );
 
   return (
     <button
@@ -162,22 +182,14 @@ const FavoriteButton = ({ track }: { track: TrackDetails }) => {
       type="button"
       data-testid="favorite-btn"
       className={`h-auto w-[20px] flex-shrink-0 bg-transparent p-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-visible:ring-2 group-focus-visible:ring-emerald-500 ${isFavorited ? "opacity-100" : "opacity-0"}`}
-      onClick={(e) =>
-        toggleFavorite({
-          e,
-          track,
-          isFavorited,
-          setFavoriteSong,
-          removeFavorite,
-          startTransition,
-        })
-      }
+      onClick={handleFavorite}
     >
       <img
         width={18}
         height={18}
         src={isFavorited ? fav : notfav}
         alt="fav-icon"
+        loading="lazy"
       />
     </button>
   );
@@ -198,16 +210,21 @@ const AddToPlaylistButton = ({ track }: { track: TrackDetails }) => {
     [track?.id, userPlaylists],
   );
 
+  const handleAdd = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.stopPropagation();
+      setCreationTrack(track);
+      setRevealCreation(true);
+    },
+    [setCreationTrack, setRevealCreation, track],
+  );
+
   return (
     <button
       tabIndex={0}
       type="button"
       data-testid="playlist-btn"
-      onClick={(e) => {
-        e.stopPropagation();
-        setCreationTrack(track);
-        setRevealCreation(true);
-      }}
+      onClick={handleAdd}
       className={`flex-shrink-0 border bg-transparent p-0 opacity-0 transition-opacity focus:opacity-100 focus:ring-2 focus:ring-emerald-500 group-hover:opacity-100 ${playlist?.id ? "opacity-100" : "opacity-0"}`}
     >
       <img
@@ -215,6 +232,7 @@ const AddToPlaylistButton = ({ track }: { track: TrackDetails }) => {
         height={18}
         src={playlist?.id ? tick : add}
         alt="playlist-icon"
+        loading="lazy"
       />
     </button>
   );
@@ -224,7 +242,9 @@ const PlayingGif = ({ track }: { track: TrackDetails }) => {
   const currentTrack = useBoundStore((state) => state.nowPlaying?.track);
   const isPlaying = useBoundStore((state) => state.nowPlaying?.isPlaying);
   if (currentTrack !== null && currentTrack?.id === track.id && isPlaying) {
-    return <img src={playing} alt="playing" className="h-5 w-5" />;
+    return (
+      <img src={playing} loading="lazy" alt="playing" className="h-5 w-5" />
+    );
   }
 };
 
