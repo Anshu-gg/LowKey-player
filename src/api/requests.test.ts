@@ -8,7 +8,6 @@ import {
   Mock,
 } from "vitest";
 import * as api from "./requests";
-import { useBoundStore } from "../store/store";
 import { defaultSearchData } from "../utils/utils";
 import {
   sampleAlbum,
@@ -17,6 +16,7 @@ import {
   sampleTrack,
 } from "./samples";
 import { waitFor } from "@testing-library/react";
+import { clearRequestCache } from "./requests";
 
 const {
   getAlbumData,
@@ -26,7 +26,6 @@ const {
   getPlaylist,
   getPlaylistData,
   getSearchResults,
-  getTimelyData,
   getWidgetData,
 } = api;
 
@@ -37,6 +36,7 @@ const errorObj: Error = {
 };
 
 beforeEach(() => {
+  clearRequestCache();
   globalThis.fetch = vi.fn();
 });
 
@@ -48,6 +48,7 @@ async function fetchSuccessWithData(
   fn: () => unknown,
   sampleResponse: unknown,
 ) {
+  clearRequestCache();
   const mockPayload = sampleResponse;
   const mockApiResponse = { data: mockPayload };
 
@@ -62,6 +63,7 @@ async function fetchSuccessWithData(
 }
 
 async function fetchSuccessWithNull(fn: () => unknown) {
+  clearRequestCache();
   const mockNullResponse = { message: "no data found" };
 
   (fetch as Mock).mockResolvedValue({
@@ -72,12 +74,16 @@ async function fetchSuccessWithNull(fn: () => unknown) {
   expect(failedRes).toBeNull();
 }
 
-async function fetchRejection(fn: () => Promise<unknown>) {
+async function fetchRejection(
+  fn: () => Promise<unknown>,
+  expected: unknown = undefined,
+) {
+  clearRequestCache();
   globalThis.fetch = vi.fn().mockRejectedValueOnce(errorObj);
   const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
   const result = await fn();
-  expect(result).toBeUndefined();
+  expect(result).toBe(expected);
 
   expect(consoleSpy).toHaveBeenCalledWith(errorObj);
   consoleSpy.mockRestore();
@@ -90,36 +96,6 @@ describe("Testing APIs", () => {
   });
   test("Widget request rejection", async () => {
     fetchRejection(getWidgetData);
-  });
-
-  test("Requesting timely data response", async () => {
-    const viral = { data: samplePlaylist };
-    const weekly = { data: samplePlaylist };
-    const monthly = { data: samplePlaylist };
-    const latest = { data: samplePlaylist };
-    const response = {
-      viral: viral.data,
-      weekly: weekly.data,
-      monthly: monthly.data,
-      latest: latest.data,
-    };
-
-    (fetch as Mock).mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve(response),
-    });
-    const res = await getTimelyData();
-    await waitFor(() => {
-      expect(res).toMatchObject({
-        viral: res?.viral,
-        weekly: res?.weekly,
-        monthly: res?.monthly,
-        latest: res?.latest,
-      });
-    });
-  });
-  test("Rejection of request", async () => {
-    fetchRejection(getTimelyData);
   });
 
   test("Requesting playlists by genres response", async () => {
@@ -148,32 +124,30 @@ describe("Testing APIs", () => {
   });
 
   describe("Testing getSearchResults", () => {
-    const mockSetSearch = vi.fn();
-
     beforeEach(() => {
       vi.clearAllMocks();
-      useBoundStore.setState({ setSearch: mockSetSearch });
+      clearRequestCache();
     });
 
-    test("fetches and sets search results when data.data exists", async () => {
+    test("returns search results when data.data exists", async () => {
       const mockData = { data: [{ id: "1", title: "Song" }] };
       const mockJson = vi.fn().mockResolvedValue(mockData);
       const mockResponse = { ok: true, json: mockJson };
       globalThis.fetch = vi.fn().mockResolvedValue(mockResponse);
 
-      await getSearchResults("some query");
-      expect(fetch).toHaveBeenCalledWith(expect.stringContaining("some query"));
-      expect(mockSetSearch).toHaveBeenCalledWith(mockData.data);
+      const result = await getSearchResults("some query");
+      await waitFor(() => {
+        expect(result).toEqual(mockData.data);
+      });
     });
 
-    test("sets default data when data.data is not present", async () => {
+    test("returns default data when data.data is not present", async () => {
       const mockData = {};
       const mockJson = vi.fn().mockResolvedValue(mockData);
       const mockResponse = { ok: true, json: mockJson };
       globalThis.fetch = vi.fn().mockResolvedValue(mockResponse);
 
-      await getSearchResults("validQuery");
-      expect(mockSetSearch).toHaveBeenCalledWith(defaultSearchData);
+      expect(await getSearchResults("validQuery")).toEqual(defaultSearchData);
     });
 
     test("does not fetch when query is empty or less than 2 chars", async () => {

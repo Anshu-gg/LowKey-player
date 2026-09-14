@@ -1,39 +1,44 @@
-import { useBoundStore } from "../store/store";
-import { PlaylistById } from "../types/GlobalTypes";
+import {
+  AlbumById,
+  ArtistType,
+  PlaylistById,
+  SearchType,
+  TrackDetails,
+} from "../types/GlobalTypes";
 import { defaultSearchData } from "../utils/utils";
+const CACHE_TTL = 60000;
+const cache = new Map();
+const BASE_URL = "https://lowkey-backend.vercel.app";
+
+export const clearRequestCache = () => {
+  cache.clear();
+};
+
+async function fetchWithCache<T = unknown>(
+  url: string,
+  options?: RequestInit,
+): Promise<T> {
+  const key = url;
+  const now = Date.now();
+  const cached = cache.get(key);
+  if (cached && cached.expiry > now) return cached.data as T;
+
+  const res = await fetch(url, options);
+  if (!res.ok) {
+    throw new Error(`Fetch error: ${res.status} ${res.statusText}`);
+  }
+  const json = (await res.json()) as T;
+  cache.set(key, { data: json, expiry: now + CACHE_TTL });
+  return json;
+}
 
 //Get widget data
 export async function getWidgetData() {
   try {
-    const res = await fetch(
-      `https://lowkey-backend.vercel.app/api/playlists?id=1265154514`,
+    const json = await fetchWithCache<{ data?: PlaylistById | null }>(
+      `${BASE_URL}/api/playlists?id=1265154514`,
     );
-    const { data } = await res.json();
-    return data || null;
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-//get timely music data
-export async function getTimelyData() {
-  try {
-    const [res1, res2, res3, res4] = await Promise.all([
-      fetch("https://lowkey-backend.vercel.app/api/playlists?id=1223482895"),
-      fetch("https://lowkey-backend.vercel.app/api/playlists?id=2252904"),
-      fetch("https://lowkey-backend.vercel.app/api/playlists?id=158206266"),
-      fetch("https://lowkey-backend.vercel.app/api/playlists?id=1210453303"),
-    ]);
-    const viral = await res1.json();
-    const weekly = await res2.json();
-    const monthly = await res3.json();
-    const latest = await res4.json();
-    return {
-      viral: viral.data as PlaylistById,
-      weekly: weekly.data as PlaylistById,
-      monthly: monthly.data as PlaylistById,
-      latest: latest.data as PlaylistById,
-    };
+    return (json?.data ?? null) as PlaylistById | null;
   } catch (err) {
     console.error(err);
   }
@@ -42,11 +47,10 @@ export async function getTimelyData() {
 //Genre query
 export const getPlaylist = async (genre: string) => {
   try {
-    const res = await fetch(
-      `https://lowkey-backend.vercel.app/api/search/playlists?query=${genre}`,
+    const json = await fetchWithCache<{ data?: { results?: PlaylistById[] } }>(
+      `${BASE_URL}/api/search/playlists?query=${genre}`,
     );
-    const { data } = await res.json();
-    return data?.results || null;
+    return (json?.data?.results ?? null) as PlaylistById[] | null;
   } catch (err) {
     console.error(err);
   }
@@ -55,11 +59,10 @@ export const getPlaylist = async (genre: string) => {
 //Playlist page request
 export const getPlaylistData = async (id: string) => {
   try {
-    const res = await fetch(
-      `https://lowkey-backend.vercel.app/api/playlists?id=${id}`,
+    const json = await fetchWithCache<{ data?: PlaylistById }>(
+      `${BASE_URL}/api/playlists?id=${id}`,
     );
-    const { data } = await res.json();
-    return data || null;
+    return (json?.data ?? null) as PlaylistById;
   } catch (err) {
     console.error(err);
   }
@@ -67,45 +70,46 @@ export const getPlaylistData = async (id: string) => {
 //Album page request
 export const getAlbumData = async (id: string) => {
   try {
-    const res = await fetch(
-      `https://lowkey-backend.vercel.app/api/albums?id=${id}`,
+    const json = await fetchWithCache<{ data?: AlbumById }>(
+      `${BASE_URL}/api/albums?id=${id}`,
     );
-    const { data } = await res.json();
-    return data || null;
+    return (json?.data ?? null) as AlbumById;
   } catch (err) {
     console.error(err);
   }
 };
 
 //search query
-export const getSearchResults = async (query: string) => {
+export const getSearchResults = async (
+  query: string,
+  signal?: AbortSignal,
+): Promise<SearchType | null> => {
   if (query !== "" && query.length >= 2) {
     try {
-      const res = await fetch(
-        `https://lowkey-backend.vercel.app/api/search?query=${query}`,
-      );
-      if (res.ok) {
-        const data = await res.json();
-        if (data.data) {
-          useBoundStore.getState().setSearch(data.data);
-        } else {
-          useBoundStore.getState().setSearch(defaultSearchData);
-        }
-      }
+      const url = `${BASE_URL}/api/search?query=${query}`;
+      const json = await fetchWithCache<{ data?: SearchType }>(url, {
+        signal,
+      });
+      if (json?.data) return json.data;
+      return defaultSearchData;
     } catch (err) {
+      if ((err as Error)?.name === "AbortError") {
+        // request was aborted by caller
+        return null;
+      }
       console.error(err);
     }
   }
+  return null;
 };
 
 //artist details
 export const getArtistDetails = async (id: string) => {
   try {
-    const res = await fetch(
-      `https://lowkey-backend.vercel.app/api/artists/${id}`,
+    const json = await fetchWithCache<{ data?: ArtistType }>(
+      `${BASE_URL}/api/artists/${id}`,
     );
-    const { data } = await res.json();
-    return data || null;
+    return (json?.data ?? null) as ArtistType;
   } catch (err) {
     console.error(err);
   }
@@ -114,11 +118,10 @@ export const getArtistDetails = async (id: string) => {
 //artist albums
 export const getArtistAlbums = async (id: string) => {
   try {
-    const res = await fetch(
-      `https://lowkey-backend.vercel.app/api/artists/${id}/albums?page=0`,
+    const json = await fetchWithCache<{ data?: { albums?: AlbumById[] } }>(
+      `${BASE_URL}/api/artists/${id}/albums?page=0`,
     );
-    const { data } = await res.json();
-    return data?.albums || null;
+    return (json?.data?.albums ?? null) as AlbumById[] | null;
   } catch (err) {
     console.error(err);
   }
@@ -127,11 +130,10 @@ export const getArtistAlbums = async (id: string) => {
 //artist songs
 export const getArtistSongs = async (id: string) => {
   try {
-    const res = await fetch(
-      `https://lowkey-backend.vercel.app/api/artists/${id}/songs?page=0`,
+    const json = await fetchWithCache<{ data?: { songs?: TrackDetails[] } }>(
+      `${BASE_URL}/api/artists/${id}/songs?page=0`,
     );
-    const { data } = await res.json();
-    return data?.songs || null;
+    return (json?.data?.songs ?? null) as TrackDetails[] | null;
   } catch (err) {
     console.error(err);
   }
