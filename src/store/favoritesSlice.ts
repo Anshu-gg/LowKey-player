@@ -46,8 +46,9 @@ export const favoritesSlice = (
     setFavoriteSong: (song: TrackDetails) => {
       set(
         produce((state) => {
+          state.favorites.songs = state.favorites.songs ?? [];
           if (
-            !state.favorites.songs.some((s: TrackDetails) => s.id === song.id)
+            !state.favorites.songs?.some((s: TrackDetails) => s.id === song.id)
           ) {
             state.favorites.songs.push(song);
             get().setActivity(`Added ${song.name} to favorites 💘`);
@@ -58,8 +59,9 @@ export const favoritesSlice = (
     setFavoriteAlbum: (data: AlbumById) => {
       set(
         produce((state) => {
+          state.favorites.albums = state.favorites.albums ?? [];
           if (
-            !state.favorites.albums.some((a: AlbumById) => a.id === data.id)
+            !state.favorites.albums?.some((a: AlbumById) => a.id === data.id)
           ) {
             state.favorites.albums.push(data);
             get().setActivity(`Added ${data.name} to favorites 💘`);
@@ -70,8 +72,9 @@ export const favoritesSlice = (
     setFavoritePlaylist: (data: PlaylistById) => {
       set(
         produce((state) => {
+          state.favorites.playlists = state.favorites.playlists ?? [];
           if (
-            !state.favorites.playlists.some(
+            !state.favorites.playlists?.some(
               (p: PlaylistById) => p.id === data.id,
             )
           ) {

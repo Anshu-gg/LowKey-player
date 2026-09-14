@@ -58,10 +58,14 @@ export const librarySlice = (
       userPlaylists: saved.userPlaylists,
     },
     setLibraryAlbum: (data: AlbumById) => {
+      if (!data) return;
       set(
         produce((state) => {
+          state.library.albums = state.library.albums ?? [];
           if (
-            !state.favorites.albums.some((p: PlaylistById) => p.id === data.id)
+            !state.library.albums.some(
+              (album: AlbumById) => album.id === data.id,
+            )
           ) {
             state.library.albums.unshift(data);
           }
@@ -69,21 +73,27 @@ export const librarySlice = (
       );
       get().setActivity(`Added ${data.name} to Library 📚`);
     },
+
     removeLibraryAlbum: (id: string) =>
       set(
         produce((state) => {
-          state.library.albums = state.library.albums.filter(
-            (album: AlbumById) => album.id !== id,
-          );
+          state.library.albums =
+            state.library.albums?.filter(
+              (album: AlbumById) => album.id !== id,
+            ) ?? [];
         }),
       ),
     setLibraryPlaylist: (data: PlaylistById) => {
+      if (!data) return;
       set(
         produce((state) => {
+          state.library.playlists = state.library.playlists ?? [];
           if (
-            !state.library.playlists.some((p: PlaylistById) => p.id === data.id)
+            !state.library.playlists?.some(
+              (p: PlaylistById) => p.id === data.id,
+            )
           ) {
-            state.library.playlists.unshift(data);
+            state.library.playlists?.unshift(data);
           }
         }),
       );
@@ -92,7 +102,7 @@ export const librarySlice = (
     removeLibraryPlaylist: (id: string) =>
       set(
         produce((state) => {
-          state.library.playlists = state.library.playlists.filter(
+          state.library.playlists = state.library.playlists?.filter(
             (playlist: PlaylistById) => playlist.id !== id,
           );
         }),
@@ -101,11 +111,11 @@ export const librarySlice = (
       set(
         produce((state) => {
           if (
-            !state.library.userPlaylists.some(
+            !state.library.userPlaylists?.some(
               (p: UserPlaylist) => p.id === playlist.id,
             )
           ) {
-            state.library.userPlaylists.unshift(playlist);
+            state.library.userPlaylists?.unshift(playlist);
           }
         }),
       );
@@ -113,12 +123,13 @@ export const librarySlice = (
     setToUserPlaylist: (track: TrackDetails, id: number) => {
       set(
         produce((state) => {
+          state.library.userPlaylists = state.library.userPlaylists ?? [];
           const playlist = state.library.userPlaylists.find(
             (p: UserPlaylist) => p.id === id,
           );
           if (
             !playlist ||
-            playlist.songs.some((s: TrackDetails) => s.id === track.id)
+            playlist.songs?.some((s: TrackDetails) => s.id === track.id)
           ) {
             return state;
           }
@@ -157,7 +168,7 @@ export const librarySlice = (
             id: id,
             songs: [],
           };
-          state.library.userPlaylists.unshift(playlist);
+          state.library.userPlaylists?.unshift(playlist);
         }),
       );
       get().setActivity(`Created "${name}" as playlist 🎶`);
@@ -173,12 +184,13 @@ export const librarySlice = (
     setFollowing: (data: ArtistInSong) => {
       set(
         produce((state) => {
+          state.library.followings = state.library.followings ?? [];
           if (
-            !state.library.followings.some(
+            !state.library.followings?.some(
               (p: PlaylistById) => p.id === data.id,
             )
           ) {
-            state.library.followings.unshift(data);
+            state.library.followings?.unshift(data);
           }
         }),
       );

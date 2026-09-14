@@ -15,8 +15,9 @@ import { favoritesSlice, FavoritesSliceType } from "./favoritesSlice";
 import { playerSlice, PlayerSliceType } from "./playerSlice";
 import { RecentSliceType, recentsSlice } from "./recentsSlice";
 import { searchSlice, SearchSliceType } from "./searchSlice";
-import { saveToLocalStorage } from "../helpers/saveToLocalStorage";
+import { saveLocal } from "../modules/helpers";
 
+const { saveToLocalStorage } = await saveLocal();
 export type StoreType = {
   greeting: string;
   changeGreeting: (str: string) => void;
@@ -73,11 +74,15 @@ export const useBoundStore = create<StoreType>()(
           savedFavorites.songs = songs;
         }
         if (localRecents !== null) {
-          const { history, activity }: RecentTypes = JSON.parse(localRecents);
-          if (history !== null) {
-            savedRecents.history = history;
+          try {
+            const { history, activity }: RecentTypes = JSON.parse(localRecents);
+            if (history !== null) {
+              savedRecents.history = history;
+            }
+            savedRecents.activity = activity as ActivityType[];
+          } catch {
+            console.error("Could not get saved recents..");
           }
-          savedRecents.activity = activity as ActivityType[];
         }
 
         return {

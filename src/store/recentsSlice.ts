@@ -38,6 +38,7 @@ export const recentsSlice = (
   setHistory: (data: TrackDetails) =>
     set(
       produce((state) => {
+        state.recents.history = state.recents.history ?? [];
         const existingIndex = state.recents.history?.findIndex(
           (song: TrackDetails) => song.id === data?.id,
         );
@@ -50,6 +51,7 @@ export const recentsSlice = (
   setActivity: (message: string) =>
     set(
       produce((state) => {
+        state.recents.activity = state.recents.activity ?? [];
         const existingIndex = state.recents.activity?.findIndex(
           ({ msg }: { msg: string }) => msg === message,
         );
