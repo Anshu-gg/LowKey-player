@@ -1,8 +1,13 @@
-import { useBoundStore } from "../../store/store";
+import { useCallback } from "react";
+import { useBoundStore } from "../../modules/hooks";
 
 const ShuffleButton = () => {
   const isShuffling = useBoundStore((state) => state.isShuffling);
   const setIsShuffling = useBoundStore((state) => state.setIsShuffling);
+
+  const toggleShuffling = useCallback(() => {
+    setIsShuffling(!isShuffling);
+  }, [isShuffling, setIsShuffling]);
 
   return (
     <button
@@ -10,7 +15,7 @@ const ShuffleButton = () => {
       title="shuffle-button"
       tabIndex={0}
       aria-label={isShuffling ? "Disable shuffle" : "Enable shuffle"}
-      onClick={() => setIsShuffling(!isShuffling)}
+      onClick={toggleShuffling}
       className="-mr-1 border border-white bg-transparent p-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
     >
       <svg

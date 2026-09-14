@@ -1,26 +1,27 @@
-import { memo, useMemo } from "react";
-import { useBoundStore } from "../../store/store";
+import { memo, useCallback, useMemo } from "react";
 import { ArtistInSong } from "../../types/GlobalTypes";
+import { useBoundStore } from "../../modules/hooks";
 
 const FollowButton = memo(({ artist }: { artist: ArtistInSong }) => {
   const setFollowing = useBoundStore((state) => state.setFollowing);
   const removeFollowing = useBoundStore((state) => state.removeFollowing);
   const followings = useBoundStore((state) => state.library.followings);
   const isFollowing = useMemo(
-    () => followings.some((a) => a.id === artist.id),
+    () => followings?.some((a) => a.id === artist.id),
     [followings, artist.id],
   );
 
-  const handleFollowing = (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
-  ) => {
-    e.stopPropagation();
-    if (isFollowing) {
-      removeFollowing(artist.id);
-    } else {
-      setFollowing(artist);
-    }
-  };
+  const handleFollowing = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.stopPropagation();
+      if (isFollowing) {
+        removeFollowing(artist.id);
+      } else {
+        setFollowing(artist);
+      }
+    },
+    [artist, isFollowing, removeFollowing, setFollowing],
+  );
 
   return (
     <button
