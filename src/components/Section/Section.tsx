@@ -1,4 +1,3 @@
-import { PlaylistOfList } from "../../types/GlobalTypes";
 import Playlist from "../Playlist/Playlist";
 import { memo, useEffect, useRef, useState } from "react";
 import SectionLoading from "./Loading";
@@ -52,7 +51,7 @@ const Section = memo(
         ref={sectionRef}
         className="flex h-auto w-full flex-col overflow-x-hidden bg-transparent py-2"
       >
-        <h1 className="mb-2 px-4 text-left text-xl font-semibold capitalize text-white">
+        <h1 className="mb-2 px-4 text-left text-base xl:text-lg font-medium capitalize text-white">
           {genre}
         </h1>
         <div
@@ -60,7 +59,7 @@ const Section = memo(
           role="list"
           className="flex h-[180px] w-full overflow-y-hidden overflow-x-scroll whitespace-nowrap px-4"
         >
-          {sectionData?.map((playlist: PlaylistOfList, i: number) => (
+          {sectionData?.map((playlist, i: number) => (
             <div
               data-testid="playlist-item"
               key={playlist.id}

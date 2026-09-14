@@ -1,4 +1,4 @@
-import { PlaylistOfList } from "../../types/GlobalTypes";
+import { PlaylistById } from "../../types/GlobalTypes";
 const fallback = "/fallbacks/playlist-fallback.webp";
 import { useEffect, useMemo, useRef } from "react";
 
@@ -7,8 +7,8 @@ export default function Playlist({
   image,
   name,
   i,
-  fadeOutNavigate, 
-}: PlaylistOfList & { i: number; fadeOutNavigate: (_str: string) => void }) {
+  fadeOutNavigate,
+}: PlaylistById & { i: number; fadeOutNavigate: (_str: string) => void }) {
   const playlistImgEl = useRef<HTMLImageElement>(null);
 
   const { newImage } = useMemo(() => {
