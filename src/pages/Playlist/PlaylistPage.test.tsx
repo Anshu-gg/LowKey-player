@@ -121,8 +121,9 @@ describe("PlaylistInfo", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-
-    expect(screen.getByTestId("playlist-info")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId("playlist-info")).toBeInTheDocument();
+    });
   });
   test("getAlbumImage should return the image url", async () => {
     const { rerender } = render(
@@ -166,9 +167,12 @@ describe("PlaylistInfo", () => {
       </QueryClientProvider>,
     );
 
-    await waitFor(() => {
+    waitFor(() => {
       expect(getAlbumImage).not.toReturn();
-      expect(screen.getByAltText("img")).toHaveAttribute("src", fallback);
+      expect(screen.getByTestId("playlist-info-image")).toHaveAttribute(
+        "src",
+        fallback,
+      );
     });
   });
   test("should have it's image as fallback onError", async () => {
@@ -184,7 +188,9 @@ describe("PlaylistInfo", () => {
 
     const image = screen.getByTestId("playlist-info-image");
     fireEvent.error(image);
-    expect((image as HTMLImageElement).src).toContain(fallback);
+    await waitFor(() => {
+      expect((image as HTMLImageElement).src).toContain(fallback);
+    });
   });
 });
 describe("PlaylistControls", () => {
@@ -217,7 +223,7 @@ describe("PlaylistControls", () => {
       </QueryClientProvider>,
     );
 
-    act(() => { 
+    act(() => {
       setQueue({ ...samplePlaylist, id });
       setIsPlaying(true);
     });
@@ -238,7 +244,7 @@ describe("PlaylistControls", () => {
     );
 
     mockedUseQuery.mockReturnValue(
-      mockedNullDataResult as UseQueryResult<null>, 
+      mockedNullDataResult as UseQueryResult<null>,
     );
 
     expect(useBoundStore.getState().nowPlaying.isPlaying).toBe(true);

@@ -135,7 +135,8 @@ describe("ArtistPage", () => {
       const result = await getArtistDetails(id);
 
       expect(fetch).toHaveBeenCalledWith(
-        `https://lowkey-backend.vercel.app/api/artists/${id}`,
+        `http://localhost:3000/api/artists/${id}`,
+        undefined,
       );
       expect(result).toEqual(sampleArtist);
     });
@@ -289,7 +290,8 @@ describe("ArtistPage", () => {
       const result = await getArtistAlbums(id);
 
       expect(fetch).toHaveBeenCalledWith(
-        `https://lowkey-backend.vercel.app/api/artists/${id}/albums?page=0`,
+        `http://localhost:3000/api/artists/${id}/albums?page=0`,
+        undefined,
       );
       expect(result).toEqual(mockAlbums);
     });
@@ -347,9 +349,7 @@ describe("ArtistPage", () => {
           </MemoryRouter>
         </QueryClientProvider>,
       );
-      expect(
-        (await screen.findByTestId("albums-container")).childElementCount,
-      ).toBe(0);
+      expect(screen.queryByTestId("albums-container")).not.toBeInTheDocument();
     });
     test("getAlbumImage should get the image url if available else return albumfallback", () => {
       const { unmount } = render(
@@ -414,8 +414,10 @@ describe("ArtistPage", () => {
       const result = await getArtistSongs(id);
 
       expect(fetch).toHaveBeenCalledWith(
-        `https://lowkey-backend.vercel.app/api/artists/${id}/songs?page=0`,
+        `http://localhost:3000/api/artists/${id}/songs?page=0`,
+        undefined,
       );
+
       expect(result).toEqual(mockSongs);
     });
   });

@@ -8,7 +8,7 @@ import {
 import { afterAll, afterEach, describe, expect, test, vi } from "vitest";
 import Playlist from "./Playlist";
 const fallback = "/fallbacks/playlist-fallback.webp";
-import { samplePlaylistOfList } from "../../api/samples";
+import { samplePlaylist } from "../../api/samples";
 
 const fadeOutNavigate = vi.fn();
 fadeOutNavigate.mockImplementation(() => {});
@@ -26,21 +26,21 @@ afterAll(() => {
 describe("Playlist", () => {
   test("should render", async () => {
     render(
-      <Playlist {...samplePlaylistOfList} fadeOutNavigate={fadeOutNavigate} />,
+      <Playlist i={0} {...samplePlaylist} fadeOutNavigate={fadeOutNavigate} />,
     );
     expect(screen.getByTestId("playlist")).toBeInTheDocument();
   });
   test("should fadeout and navigate on click", async () => {
     vi.useFakeTimers();
     render(
-      <Playlist {...samplePlaylistOfList} fadeOutNavigate={fadeOutNavigate} />,
+      <Playlist i={0} {...samplePlaylist} fadeOutNavigate={fadeOutNavigate} />,
     );
     const playlist = screen.getByTestId("playlist");
     fireEvent.click(playlist);
     vi.runAllTimersAsync();
     await waitFor(() => {
       expect(fadeOutNavigate).toHaveBeenCalledWith(
-        `/playlists/${samplePlaylistOfList.id}`,
+        `/playlists/${samplePlaylist.id}`,
       );
     });
   });
@@ -48,7 +48,7 @@ describe("Playlist", () => {
     render(
       <Playlist
         {...{
-          ...samplePlaylistOfList,
+          ...samplePlaylist,
           image: [
             {
               quality: "150x150",
@@ -56,6 +56,7 @@ describe("Playlist", () => {
             },
           ],
         }}
+        i={0}
         fadeOutNavigate={fadeOutNavigate}
       />,
     );
@@ -66,13 +67,13 @@ describe("Playlist", () => {
   });
   test("should contain fallback image if no image", async () => {
     render(
-      <Playlist {...samplePlaylistOfList} fadeOutNavigate={fadeOutNavigate} />,
+      <Playlist i={0} {...samplePlaylist} fadeOutNavigate={fadeOutNavigate} />,
     );
     expect(screen.getByAltText("Playlist 21")).toHaveAttribute("src", fallback);
   });
   test("image should be it's fallback onError", async () => {
     render(
-      <Playlist {...samplePlaylistOfList} fadeOutNavigate={fadeOutNavigate} />,
+      <Playlist i={0} {...samplePlaylist} fadeOutNavigate={fadeOutNavigate} />,
     );
     fireEvent.error(screen.getByAltText("Playlist 21"));
     expect(screen.getByAltText("Playlist 21")).toHaveAttribute("src", fallback);
@@ -80,12 +81,12 @@ describe("Playlist", () => {
   test("image should have transition applied on mount", async () => {
     vi.useFakeTimers();
     render(
-      <Playlist {...samplePlaylistOfList} fadeOutNavigate={fadeOutNavigate} />,
+      <Playlist i={0} {...samplePlaylist} fadeOutNavigate={fadeOutNavigate} />,
     );
     expect(screen.getByAltText("Playlist 21")).toBeInTheDocument();
     expect(screen.getByAltText("Playlist 21")).toHaveClass("image-fadeout");
     expect(screen.getByAltText("Playlist 21")).not.toHaveClass("image-fadein");
-    vi.advanceTimersByTime(samplePlaylistOfList.i * 50);
+    vi.advanceTimersByTime(1 * 50);
 
     expect(screen.getByAltText("Playlist 21")).toHaveClass("image-fadein");
     expect(screen.getByAltText("Playlist 21")).not.toHaveClass("image-fadeout");

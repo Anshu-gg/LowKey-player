@@ -15,9 +15,7 @@ afterEach(() => {
   localStorage.clear();
 });
 
-async function importStoreWithStorage(
-  storedValues: Record<string, unknown>,
-) {
+async function importStoreWithStorage(storedValues: Record<string, unknown>) {
   localStorage.clear();
   for (const [key, value] of Object.entries(storedValues)) {
     localStorage.setItem(key, JSON.stringify(value));
@@ -60,9 +58,7 @@ describe("Testing store localStorage hydration", () => {
 
     expect(freshStore.getState().favorites.songs).toEqual([sampleTrack]);
     expect(freshStore.getState().favorites.albums).toEqual([sampleAlbum]);
-    expect(freshStore.getState().favorites.playlists).toEqual([
-      samplePlaylist,
-    ]);
+    expect(freshStore.getState().favorites.playlists).toEqual([samplePlaylist]);
   });
 
   test("hydrates recents data from localStorage", async () => {
@@ -371,6 +367,18 @@ describe("Testing library", () => {
         sampleAlbum,
       );
     });
+
+    test("setLibraryAlbum still adds an album when it is already favorited", async () => {
+      act(() => {
+        useBoundStore.getState().setFavoriteAlbum(sampleAlbum);
+      });
+      act(() => {
+        useBoundStore.getState().setLibraryAlbum(sampleAlbum);
+      });
+      expect(useBoundStore.getState().library.albums).toContainEqual(
+        sampleAlbum,
+      );
+    });
     test("removeLibraryAlbum removes the same album", async () => {
       act(() => {
         useBoundStore.getState().removeLibraryAlbum(sampleAlbum.id);
@@ -392,6 +400,18 @@ describe("Testing library", () => {
       expect(useBoundStore.getState().library.playlists).toContainEqual(
         samplePlaylist,
       );
+      act(() => {
+        useBoundStore.getState().setLibraryPlaylist(samplePlaylist);
+      });
+      expect(useBoundStore.getState().library.playlists).toContainEqual(
+        samplePlaylist,
+      );
+    });
+
+    test("setLibraryPlaylist still adds a playlist when it is already favorited", async () => {
+      act(() => {
+        useBoundStore.getState().setFavoritePlaylist(samplePlaylist);
+      });
       act(() => {
         useBoundStore.getState().setLibraryPlaylist(samplePlaylist);
       });
@@ -550,4 +570,3 @@ describe("Testing notifications", () => {
     expect(useBoundStore.getState().notifications).toBe(true);
   });
 });
-

@@ -29,10 +29,6 @@ import { PlaylistById, PlaylistOfList } from "../../types/GlobalTypes";
 const widgetfallback = "/fallbacks/widget-fallback.webp";
 import play from "../../assets/svgs/play-icon.svg";
 import pause from "../../assets/svgs/pause-icon.svg";
-const fallbacktoday = "/fallbacks/timely/icons8-timely-today.webp";
-const fallbackweekly = "/fallbacks/timely/icons8-timely-weekly.webp";
-const fallbackmonthly = "/fallbacks/timely/icons8-timely-monthly.webp";
-const fallbackyearly = "/fallbacks/timely/icons8-timely-yearly.webp";
 import { IntersectionObserverMock } from "../../helpers/IntersectionObserverMock";
 import { useBoundStore } from "../../store/store";
 import {
@@ -461,13 +457,11 @@ describe("Home", () => {
           );
           vi.runAllTimers();
           const today = screen.getByTestId("today-playlist-image");
-          expect((today as HTMLImageElement).src).toContain("image%20url");
+          expect((today as HTMLImageElement).src).toContain(
+            "data:image/svg+xml",
+          );
         });
         test("as fallbacktoday if not available", async () => {
-          mockedUseQuery.mockReturnValue({
-            ...mockedPlaylistSuccessData,
-            data: { ...samplePlaylist, image: [] },
-          } as UseQueryResult<PlaylistById>);
           render(
             <QueryClientProvider client={new QueryClient()}>
               <MemoryRouter initialEntries={["/home"]}>
@@ -477,7 +471,9 @@ describe("Home", () => {
           );
           vi.runAllTimers();
           const today = screen.getByTestId("today-playlist-image");
-          expect((today as HTMLImageElement).src).toContain(fallbacktoday);
+          expect((today as HTMLImageElement).src).toContain(
+            "data:image/svg+xml",
+          );
         });
         test("as fallbackyearly onError", async () => {
           render(
@@ -490,7 +486,9 @@ describe("Home", () => {
           vi.runAllTimers();
           const today = screen.getByTestId("today-playlist-image");
           fireEvent.error(today);
-          expect((today as HTMLImageElement).src).toContain(fallbacktoday);
+          expect((today as HTMLImageElement).src).toContain(
+            "data:image/svg+xml",
+          );
         });
       });
     });
@@ -536,13 +534,11 @@ describe("Home", () => {
           );
           vi.runAllTimers();
           const weekly = screen.getByTestId("weekly-playlist-image");
-          expect((weekly as HTMLImageElement).src).toContain("image%20url");
+          expect((weekly as HTMLImageElement).src).toContain(
+            "data:image/svg+xml",
+          );
         });
         test("as fallbackweekly if not available", async () => {
-          mockedUseQuery.mockReturnValue({
-            ...mockedPlaylistSuccessData,
-            data: { ...samplePlaylist, image: [] },
-          } as UseQueryResult<PlaylistById>);
           render(
             <QueryClientProvider client={new QueryClient()}>
               <MemoryRouter initialEntries={["/home"]}>
@@ -552,7 +548,9 @@ describe("Home", () => {
           );
           vi.runAllTimers();
           const weekly = screen.getByTestId("weekly-playlist-image");
-          expect((weekly as HTMLImageElement).src).toContain(fallbackweekly);
+          expect((weekly as HTMLImageElement).src).toContain(
+            "data:image/svg+xml",
+          );
         });
         test("as fallbackweekly onError", async () => {
           render(
@@ -565,7 +563,9 @@ describe("Home", () => {
           vi.runAllTimers();
           const weekly = screen.getByTestId("weekly-playlist-image");
           fireEvent.error(weekly);
-          expect((weekly as HTMLImageElement).src).toContain(fallbackweekly);
+          expect((weekly as HTMLImageElement).src).toContain(
+            "data:image/svg+xml",
+          );
         });
       });
     });
@@ -611,13 +611,11 @@ describe("Home", () => {
           );
           vi.runAllTimers();
           const monthly = screen.getByTestId("monthly-playlist-image");
-          expect((monthly as HTMLImageElement).src).toContain("image%20url");
+          expect((monthly as HTMLImageElement).src).toContain(
+            "data:image/svg+xml",
+          );
         });
         test("as fallbackmonthly if not available", async () => {
-          mockedUseQuery.mockReturnValue({
-            ...mockedPlaylistSuccessData,
-            data: { ...samplePlaylist, image: [] },
-          } as UseQueryResult<PlaylistById>);
           render(
             <QueryClientProvider client={new QueryClient()}>
               <MemoryRouter initialEntries={["/home"]}>
@@ -627,7 +625,9 @@ describe("Home", () => {
           );
           vi.runAllTimers();
           const monthly = screen.getByTestId("monthly-playlist-image");
-          expect((monthly as HTMLImageElement).src).toContain(fallbackmonthly);
+          expect((monthly as HTMLImageElement).src).toContain(
+            "data:image/svg+xml",
+          );
         });
         test("as fallbackmonthly onError", async () => {
           render(
@@ -640,7 +640,9 @@ describe("Home", () => {
           vi.runAllTimers();
           const monthly = screen.getByTestId("monthly-playlist-image");
           fireEvent.error(monthly);
-          expect((monthly as HTMLImageElement).src).toContain(fallbackmonthly);
+          expect((monthly as HTMLImageElement).src).toContain(
+            "data:image/svg+xml",
+          );
         });
       });
     });
@@ -686,13 +688,11 @@ describe("Home", () => {
           );
           vi.runAllTimers();
           const yearly = screen.getByTestId("yearly-playlist-image");
-          expect((yearly as HTMLImageElement).src).toContain("image%20url");
+          expect((yearly as HTMLImageElement).src).toContain(
+            "data:image/svg+xml",
+          );
         });
         test("as fallbackyearly if not available", async () => {
-          mockedUseQuery.mockReturnValue({
-            ...mockedPlaylistSuccessData,
-            data: { ...samplePlaylist, image: [] },
-          } as UseQueryResult<PlaylistById>);
           render(
             <QueryClientProvider client={new QueryClient()}>
               <MemoryRouter initialEntries={["/home"]}>
@@ -702,7 +702,9 @@ describe("Home", () => {
           );
           vi.runAllTimers();
           const yearly = screen.getByTestId("yearly-playlist-image");
-          expect((yearly as HTMLImageElement).src).toContain(fallbackyearly);
+          expect((yearly as HTMLImageElement).src).toContain(
+            "data:image/svg+xml",
+          );
         });
         test("as fallbackyearly onError", async () => {
           render(
@@ -715,7 +717,9 @@ describe("Home", () => {
           vi.runAllTimers();
           const yearly = screen.getByTestId("yearly-playlist-image");
           fireEvent.error(yearly);
-          expect((yearly as HTMLImageElement).src).toContain(fallbackyearly);
+          expect((yearly as HTMLImageElement).src).toContain(
+            "data:image/svg+xml",
+          );
         });
       });
     });

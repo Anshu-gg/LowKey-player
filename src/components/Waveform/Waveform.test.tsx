@@ -271,7 +271,7 @@ describe("Waveform", () => {
       unmount();
 
       expect(screen.queryByTestId("waveform")).not.toBeInTheDocument();
-      expect(mockUn).not.toHaveBeenCalledWith("finish", expect.any(Function));
+      expect(mockUn).toHaveBeenCalledWith("finish", expect.any(Function));
     });
     test("replays track once if isReplay=true", async () => {
       const replayObj = {
@@ -289,13 +289,14 @@ describe("Waveform", () => {
       }
 
       const finishHandler = finishCall[1];
+      const dateNowSpy = vi.spyOn(Date, "now");
+      dateNowSpy.mockReturnValueOnce(1000).mockReturnValueOnce(1500);
 
       act(() => finishHandler());
       expect(replayObj.playCountRef.current).toBe(1);
       expect(mockSeekTo).toHaveBeenCalledWith(0);
       expect(mockPlay).toHaveBeenCalled();
       expect(replayObj.continuePlayback).not.toHaveBeenCalled();
-
       act(() => finishHandler());
       expect(replayObj.playCountRef.current).toBe(0);
       expect(replayObj.continuePlayback).toHaveBeenCalled();

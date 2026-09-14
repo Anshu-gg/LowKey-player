@@ -12,8 +12,6 @@ import { useBoundStore } from "../../store/store";
 import { createRef } from "react";
 import userEvent from "@testing-library/user-event";
 import { sampleTrack } from "../../api/samples";
-import Layout from "../../pages/Layout/Layout";
-import { MemoryRouter } from "react-router-dom";
 
 const ref = createRef<HTMLDivElement | null>();
 
@@ -41,14 +39,10 @@ describe("Playlist Modal", () => {
   });
   test("should toggle display styles if revealCreation toggles", async () => {
     expect(useBoundStore.getState().revealCreation).toBe(false);
-    render(
-      <MemoryRouter>
-        <Layout />
-      </MemoryRouter>,
-    );
-    const playlistModal = (await screen.findByTestId(
+    render(<PlaylistModal ref={ref} />);
+    const playlistModal = screen.getByTestId(
       "playlist-modal",
-    )) as HTMLDivElement;
+    ) as HTMLDivElement;
     expect(playlistModal).toHaveClass("hidden");
     act(() => {
       setRevealCreation(true);

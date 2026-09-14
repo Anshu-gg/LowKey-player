@@ -21,6 +21,10 @@ vi.mock("../../api/requests", () => ({
 
 beforeEach(() => {
   mockGetSearchResults = api.getSearchResults as ReturnType<typeof vi.fn>;
+  mockGetSearchResults.mockResolvedValue({
+    position: 0,
+    results: [],
+  });
 });
 
 afterEach(() => {
@@ -43,16 +47,24 @@ describe("Searchbar", () => {
     expect(input).toBeInTheDocument();
   });
   test("covers input onChange via userEvent", async () => {
-    vi.useFakeTimers();
     render(<Searchbar />);
     input = screen.getByTestId("searchinput") as HTMLInputElement;
-    const inputObj = { target: { value: "new value" } };
+
     act(() => {
-      fireEvent.change(input, inputObj);
+      fireEvent.change(input, { target: { value: "new value" } });
     });
+
     expect(input.value).toBe("new value");
-    vi.advanceTimersByTime(800);
-    expect(api.getSearchResults).toHaveBeenCalledWith("new+value");
+
+    await waitFor(
+      () => {
+        expect(mockGetSearchResults).toHaveBeenCalledWith(
+          "new+value",
+          expect.any(AbortSignal),
+        );
+      },
+      { timeout: 2000 },
+    );
   });
   test("should not fetch results for empty input", async () => {
     const user = userEvent.setup();
@@ -77,25 +89,41 @@ describe("Searchbar", () => {
     });
   });
   test("should replace whitespace input with +", async () => {
-    const user = userEvent.setup();
     render(<Searchbar />);
     input = screen.getByTestId("searchinput") as HTMLInputElement;
-    user.type(input, "user input");
-    await user.click(input);
-    await waitFor(() => {
-      expect(mockGetSearchResults).toHaveBeenCalledWith("user+input");
+
+    act(() => {
+      fireEvent.change(input, { target: { value: "user input" } });
     });
+
+    await waitFor(
+      () => {
+        expect(mockGetSearchResults).toHaveBeenCalledWith(
+          "user+input",
+          expect.any(AbortSignal),
+        );
+      },
+      { timeout: 2000 },
+    );
   });
   test("debounces calls if query changes", async () => {
-    const user = userEvent.setup();
     render(<Searchbar />);
     input = screen.getByTestId("searchinput") as HTMLInputElement;
-    user.type(input, "first");
-    await user.click(input);
-    await waitFor(() => {
-      expect(mockGetSearchResults).toHaveBeenCalledTimes(1);
-      expect(mockGetSearchResults).toHaveBeenCalledWith("first");
+
+    act(() => {
+      fireEvent.change(input, { target: { value: "first" } });
     });
+
+    await waitFor(
+      () => {
+        expect(mockGetSearchResults).toHaveBeenCalledTimes(1);
+        expect(mockGetSearchResults).toHaveBeenCalledWith(
+          "first",
+          expect.any(AbortSignal),
+        );
+      },
+      { timeout: 2000 },
+    );
   });
   test("clears timeout on unmount", async () => {
     const { unmount } = render(<Searchbar />);
