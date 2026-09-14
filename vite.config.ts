@@ -35,7 +35,7 @@ export default defineConfig(() => ({
     preload({
       mode: "preload",
       includeCss: true,
-      includeJs: true,
+      includeJs: false,
     }),
   ],
 }));
