@@ -5,8 +5,8 @@ import {
   useMemo,
   useRef,
   memo,
+  useCallback,
 } from "react";
-import { useBoundStore } from "../../store/store";
 import {
   ArtistInSong,
   Image,
@@ -29,13 +29,19 @@ import downloadIcon from "../../assets/svgs/download-icon.svg";
 const songfallback = "/fallbacks/song-fallback.webp";
 const artistfallback = "/fallbacks/artist-fallback.png";
 import Waveform from "../Waveform/Waveform";
-import { toggleFavorite } from "../../helpers/toggleFavorite";
 import { PLAYER_CONSTANTS } from "../../utils/utils";
-import { getTrackImage } from "../../helpers/getTrackImage";
 import { useNavigate } from "react-router-dom";
-import { cleanString } from "../../helpers/cleanString";
-import { useResponsiveLayout } from "../../hooks/useResponsiveLayout";
+import { useBoundStore, useResponsiveLayout } from "../../modules/hooks";
+import {
+  sanitizeString,
+  getTrackImg,
+  toggleFavorited,
+} from "../../modules/helpers";
 import FollowButton from "../FollowButton/FollowButton";
+
+const { cleanString } = await sanitizeString();
+const { getTrackImage } = await getTrackImg();
+const { toggleFavorite } = await toggleFavorited();
 
 export type RootStateType = {
   control: {
@@ -56,11 +62,13 @@ const NowPlaying = memo(() => {
   const setIsPlaying = useBoundStore((state) => state.setIsPlaying);
   const isShuffling = useBoundStore((state) => state.isShuffling);
   const setNowPlaying = useBoundStore((state) => state.setNowPlaying);
+  const setShowPlayer = useBoundStore((state) => state.setShowPlayer);
   const queueSongs = useBoundStore((state) => state.nowPlaying.queue?.songs);
   const track = useBoundStore((state) => state.nowPlaying.track);
   const isMobilePlayer = useBoundStore(
     (state) => state.nowPlaying.isMobilePlayer,
   );
+  const playCountRef = useRef(0);
   const isMobileWidth = useResponsiveLayout();
   const [audioIndex, setAudioIndex] = useState(2);
   const [isReplay, setIsReplay] = useState(false);
@@ -68,51 +76,69 @@ const NowPlaying = memo(() => {
     const lastVol = localStorage.getItem("last-volume");
     return lastVol ? Number(lastVol) : PLAYER_CONSTANTS.DEFAULT_VOLUME;
   });
-  const playCountRef = useRef(0);
-  const setShowPlayer = useBoundStore((state) => state.setShowPlayer);
-  const songIndex =
-    queueSongs?.findIndex((song: TrackDetails) => song.id === track?.id) ?? -1;
-  const uniqueArtists = [...new Set(track?.artists?.primary)].slice(0, 4);
+  const songIndex = useMemo(() => {
+    return (
+      queueSongs?.findIndex((song: TrackDetails) => song.id === track?.id) ?? -1
+    );
+  }, [queueSongs, track?.id]);
+  const uniqueArtists = useMemo(
+    () => [...new Set(track?.artists?.primary)].slice(0, 4),
+    [track?.artists?.primary],
+  );
 
-  const continuePlayback = () => {
-    if (queueSongs) {
-      if (isShuffling) {
-        let randomIndex = Math.floor(Math.random() * queueSongs.length);
-        if (queueSongs.length > 1 && queueSongs[randomIndex].id === track?.id) {
-          randomIndex = (randomIndex + 1) % queueSongs.length;
-        }
-        setNowPlaying(queueSongs[randomIndex]);
-        setIsPlaying(true);
-        return;
+  const continuePlayback = useCallback(() => {
+    if (!queueSongs) {
+      setIsPlaying(false);
+      return;
+    }
+    if (isShuffling) {
+      let randomIndex = Math.floor(Math.random() * queueSongs.length);
+      if (queueSongs.length > 1 && queueSongs[randomIndex].id === track?.id) {
+        randomIndex = (randomIndex + 1) % queueSongs.length;
       }
+      setNowPlaying(queueSongs[randomIndex]);
+      setIsPlaying(true);
+      return;
+    }
 
-      if (songIndex !== -1 && songIndex < queueSongs.length - 1) {
-        setNowPlaying(queueSongs[songIndex + 1]);
-        setIsPlaying(true);
-      } else {
-        setIsPlaying(false);
-      }
+    if (songIndex !== -1 && songIndex < queueSongs.length - 1) {
+      setNowPlaying(queueSongs[songIndex + 1]);
+      setIsPlaying(true);
     } else {
       setIsPlaying(false);
     }
-  };
+  }, [
+    isShuffling,
+    queueSongs,
+    setIsPlaying,
+    setNowPlaying,
+    songIndex,
+    track?.id,
+  ]);
 
-  const handleDownload = async (url: string, filename: string) => {
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const blobUrl = globalThis.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = `${cleanString(filename)}.mp3`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      globalThis.URL.revokeObjectURL(blobUrl);
-    } catch (error) {
-      console.error("Download failed:", error);
-    }
-  };
+  const handleDownload = useCallback(
+    (url: string, filename: string) => async () => {
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = globalThis.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = `${cleanString(filename)}.mp3`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        globalThis.URL.revokeObjectURL(blobUrl);
+      } catch (error) {
+        console.error("Download failed:", error);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    playCountRef.current = 0;
+  }, [track?.id, isReplay]);
 
   useEffect(() => {
     if (volume === 0) {
@@ -144,12 +170,12 @@ const NowPlaying = memo(() => {
   return (
     <section
       data-testid="now-playing"
-      className={`${isMobilePlayer ? "translate-y-0" : "translate-y-[100%]"} absolute bottom-0 z-20 flex h-full w-full flex-col items-center justify-start overflow-y-scroll bg-black pb-10 outline-none transition-transform sm:h-fit sm:translate-y-0 sm:flex-row sm:items-center sm:justify-between sm:bg-black sm:pb-0 2xl:border 2xl:border-neutral-900`}
+      className={`${isMobilePlayer ? "translate-y-0" : "translate-y-[100%]"} absolute bottom-0 z-20 flex h-full w-full flex-col items-center justify-start overflow-y-scroll bg-black pb-10 outline-none transition-transform sm:h-[70px] sm:translate-y-0 sm:flex-row sm:items-center sm:justify-between sm:bg-black sm:pb-0 2xl:border 2xl:border-neutral-900`}
       aria-label="Now Playing Panel"
     >
       <div
-        className="sm:h-12.5 flex h-max w-full max-w-[500px] flex-shrink-0 flex-col items-start justify-start p-2.5 sm:w-[30%] sm:max-w-[300px] sm:flex-row sm:items-center sm:justify-start"
-        aria-label="Track and Artist Info"
+        className="flex h-max w-full max-w-[500px] flex-shrink-0 flex-col items-start justify-start p-2.5 sm:h-auto sm:w-[30%] sm:max-w-[300px] sm:flex-row sm:items-center sm:justify-start"
+        aria-label="Current track details"
       >
         <div className="relative z-0 h-full w-full pt-2 sm:mr-3 sm:w-auto sm:pt-0">
           {isMobileWidth && (
@@ -208,7 +234,7 @@ const NowPlaying = memo(() => {
               audioUrl={track?.downloadUrl[audioIndex]?.url || ""}
               duration={Number(track?.duration)}
               volume={volume}
-              songIndex={songIndex || 0}
+              songIndex={songIndex}
               queueLength={queueSongs ? queueSongs.length : 0}
               continuePlayback={continuePlayback}
               isMobileWidth={isMobileWidth}
@@ -227,10 +253,10 @@ const NowPlaying = memo(() => {
       </div>
       {track && (
         <section
-          className="mx-auto mt-8 flex h-auto w-[90%] max-w-[500px] items-center justify-evenly sm:absolute sm:-top-[25px] sm:right-16 sm:w-[120px]"
+          className="mx-auto mt-7 flex h-auto w-[90%] max-w-[500px] items-center justify-evenly sm:absolute sm:-top-[25px] sm:right-16 sm:w-[120px]"
           aria-label="Quality and Download Options"
         >
-          <div>
+          <div className="-ml-8 sm:ml-0">
             <label
               htmlFor="quality"
               className="mr-2 text-base text-white sm:hidden"
@@ -271,12 +297,12 @@ const NowPlaying = memo(() => {
                 const url = track.downloadUrl[audioIndex]?.url;
                 const filename = track.name || "track";
                 if (url) {
-                  handleDownload(url, filename);
+                  void handleDownload(url, filename)();
                 }
               }}
               data-testid="download-btn"
               disabled={!track.downloadUrl[audioIndex]?.url}
-              className={`flex w-auto items-center justify-center bg-transparent px-0 py-1 text-lg text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 sm:py-0 ${
+              className={`flex h-8 w-8 items-center justify-center bg-transparent text-lg text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 sm:w-6 sm:py-0 ${
                 !track.downloadUrl[audioIndex]?.url &&
                 "pointer-events-none cursor-not-allowed bg-neutral-700"
               }`}
@@ -286,7 +312,7 @@ const NowPlaying = memo(() => {
               <img
                 src={downloadIcon}
                 alt="download-icon"
-                className="w-8 flex-shrink-0 pl-2 sm:h-[23px] sm:w-auto sm:pl-0"
+                className="w-8 flex-shrink-0 pl-2 sm:h-5 sm:w-5 sm:pl-0"
               />
             </button>
           )}
@@ -317,16 +343,13 @@ const TrackInfo = memo(
     const isMobile = useBoundStore((state) => state.nowPlaying.isMobilePlayer);
 
     return (
-      <div
-        className="z-10 flex h-fit w-full max-w-[85%] flex-col items-start justify-center overflow-hidden text-ellipsis pl-2.5 pt-1 sm:h-full sm:max-w-[250px] sm:px-0 sm:pt-2"
-        aria-label="Track information"
-      >
-        <h2 className="line-clamp-1 w-[80%] flex-shrink-0 text-wrap text-xl font-bold text-white sm:w-full sm:text-sm">
+      <div className="z-10 flex h-fit w-full max-w-[85%] flex-col items-start justify-center overflow-hidden text-ellipsis pl-2.5 pt-1 sm:h-full sm:max-w-[250px] sm:px-0 sm:pt-2">
+        <h2 className="line-clamp-1 w-[80%] flex-shrink-0 text-wrap text-xl font-medium text-white sm:w-full sm:text-sm">
           {cleanString(name)}
         </h2>
         <div className={`my-1 w-[80%] overflow-x-hidden`}>
           <div
-            className={`${isMobile && artists.length > 2 ? "animate-scroll-left" : ""} line-clamp-1 flex h-auto pb-2 w-full flex-shrink-0 items-center justify-start space-x-2 overflow-hidden whitespace-nowrap sm:my-0 sm:w-auto`}
+            className={`${isMobile && artists.length > 2 ? "animate-scroll-left" : ""} line-clamp-1 flex h-auto w-full flex-shrink-0 items-center justify-start space-x-2 overflow-hidden whitespace-nowrap pb-2 sm:my-0 sm:w-auto`}
           >
             {artists.map((artist) => {
               const str = cleanString(artist.name);
@@ -334,7 +357,7 @@ const TrackInfo = memo(
                 <p
                   key={artist.id}
                   className="text-sm text-neutral-400 sm:text-xs"
-                  aria-label={`Artist: ${str}`}
+                  // aria-label={`Artist: ${str}`}
                 >
                   {str}
                 </p>
@@ -348,7 +371,7 @@ const TrackInfo = memo(
 );
 TrackInfo.displayName = "TrackInfo";
 
-const PlayButton = () => {
+const PlayButton = memo(() => {
   const id = useBoundStore((state) => state.nowPlaying.track?.id);
   const isPlaying = useBoundStore((state) => state.nowPlaying.isPlaying);
   const setIsPlaying = useBoundStore((state) => state.setIsPlaying);
@@ -372,7 +395,8 @@ const PlayButton = () => {
       />
     </button>
   );
-};
+});
+PlayButton.displayName = "PlayButton";
 
 const PlayerOptions = ({ track }: { track: TrackDetails | null }) => {
   const userPlaylists = useBoundStore((state) => state.library.userPlaylists);
