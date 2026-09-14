@@ -8,9 +8,9 @@ export const Widgetfallback = () => {
       data-testid="widget-fallback"
       className="h-auto max-h-max w-full px-3.5 sm:pt-0.5"
     >
-      <section className="relative z-0 mx-auto mb-7 flex h-80 w-full flex-col overflow-hidden rounded-sm bg-neutral-900 sm:my-3 sm:h-[40vw] sm:flex-row sm:bg-transparent md:h-80">
-        <div className="h-auto w-auto flex-shrink-0 cursor-pointer rounded-sm bg-neutral-700 duration-500 ease-in sm:z-10 sm:h-[40vw] sm:w-[40vw] md:h-80 md:w-80"></div>
-        <div className="absolute right-2.5 top-[105px] z-20 flex h-auto w-[95%] items-end justify-between sm:-left-16 sm:top-[80%] sm:h-12 sm:w-[48vw] sm:justify-end sm:p-2 md:w-[370px] md:py-1">
+      <section className="relative z-0 mx-auto mb-7 flex h-80 w-full flex-col overflow-hidden rounded-sm bg-neutral-900 sm:my-3 sm:h-[40vw] sm:flex-row sm:bg-transparent md:h-80 2xl:h-96">
+        <div className="h-auto w-auto flex-shrink-0 cursor-pointer rounded-sm bg-neutral-700 duration-500 ease-in sm:z-10 sm:h-[40vw] sm:w-[40vw] md:h-80 md:w-80 2xl:w-96 2xl:h-96"></div>
+        <div className="absolute right-2.5 top-[105px] z-20 flex h-auto w-[95%] items-end justify-between sm:-left-16 sm:top-[80%] sm:h-12 sm:w-[48vw] sm:justify-end sm:p-2 md:w-[370px] 2xl:w-[420px] md:py-1">
           <div className="left-0 top-0 h-9 w-[80%] rounded-sm bg-neutral-500 pl-1 text-xl font-bold sm:hidden"></div>
           <div className="-mb-1 animate-pulse rounded-full bg-neutral-400 p-[22px] sm:mb-0"></div>
         </div>

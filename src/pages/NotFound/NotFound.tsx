@@ -6,8 +6,9 @@ const nf768 = "/notfound/notfound-landscape-768px.webp";
 const nf1024 = "/notfound/notfound-landscape-1024px.webp";
 const nf1280 = "/notfound/notfound-landscape-1280px.webp";
 const nf1536 = "/notfound/notfound-landscape-1536px.webp";
-import { animateScreen } from "../../helpers/animateScreen";
-import useClearTimer from "../../hooks/useClearTimer";
+import { fadeScreen } from "../../modules/helpers";
+import { useClearTimer } from "../../modules/hooks";
+const { animateScreen } = await fadeScreen();
 
 export default function NotFound() {
   const [nfImg, setNfImg] = useState<string>("");
@@ -40,7 +41,7 @@ export default function NotFound() {
     }
   }
 
-  useClearTimer(timerRef);
+  useClearTimer.default(timerRef);
   useEffect(() => {
     timerRef.current = animateScreen(nfEl);
     imageResize();
