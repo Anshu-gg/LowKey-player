@@ -1,10 +1,10 @@
+import { lazy } from "react";
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./App.css";
-import { preconnect } from "react-dom";
-import ErrorFallback from "./components/ErrorFallback/ErrorFallback";
-
-preconnect("https://lowkey-backend.vercel.app");
+const ErrorFallback = lazy(
+  () => import("./components/ErrorFallback/ErrorFallback"),
+);
 
 export const routes = [
   {

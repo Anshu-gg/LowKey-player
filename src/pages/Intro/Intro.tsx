@@ -3,8 +3,7 @@ import { useNavigate } from "react-router-dom";
 import reactlogo from "../../assets/svgs/react.svg";
 import vitelogo from "../../assets/svgs/vite.svg";
 import tailwindlogo from "../../assets/svgs/tailwindcss.svg";
-import useClearTimer from "../../hooks/useClearTimer";
-import { preload } from "react-dom";
+import { useClearTimer } from "../../modules/hooks";
 
 const srcSet = `
   /landing/landing-480px.webp 480w,
@@ -22,12 +21,6 @@ const sizes = `
   (max-width: 1280px) 1280px,
   (max-width: 1536px) 1536px
 `;
-preload("/landing/landing-1280px.webp", {
-  as: "image",
-  imageSizes: sizes,
-  imageSrcSet: srcSet,
-  fetchPriority: "high",
-});
 
 export default function Intro() {
   const navigate = useNavigate();
@@ -54,7 +47,7 @@ export default function Intro() {
     }, 100);
   }, [navigate]);
 
-  useClearTimer(timerRef);
+  useClearTimer.default(timerRef);
 
   return (
     <div
@@ -68,6 +61,7 @@ export default function Intro() {
         sizes={sizes}
         alt="background"
         loading="eager"
+        decoding="async"
         fetchPriority="high"
         className="absolute left-0 top-0 h-full w-full animate-intro-fadein object-cover duration-200 ease-in"
       />
