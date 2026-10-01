@@ -15,7 +15,6 @@ import {
   samplePlaylist,
   sampleTrack,
 } from "./samples";
-import { waitFor } from "@testing-library/react";
 import { clearRequestCache } from "./requests";
 
 const {
@@ -45,24 +44,21 @@ afterEach(() => {
 });
 
 async function fetchSuccessWithData(
-  fn: () => unknown,
-  sampleResponse: unknown,
+  fn: () => Promise<unknown>,
+  expectedResponse: unknown,
+  apiResponse: unknown = { data: expectedResponse },
 ) {
   clearRequestCache();
-  const mockPayload = sampleResponse;
-  const mockApiResponse = { data: mockPayload };
 
   (fetch as Mock).mockResolvedValue({
     ok: true,
-    json: () => Promise.resolve(mockApiResponse),
+    json: () => Promise.resolve(apiResponse),
   });
   const res = await fn();
-  await waitFor(() => {
-    expect(res).toEqual(mockPayload);
-  });
+  expect(res).toEqual(expectedResponse);
 }
 
-async function fetchSuccessWithNull(fn: () => unknown) {
+async function fetchSuccessWithNull(fn: () => Promise<unknown>) {
   clearRequestCache();
   const mockNullResponse = { message: "no data found" };
 
@@ -91,36 +87,38 @@ async function fetchRejection(
 
 describe("Testing APIs", () => {
   test("Requesting widget response", async () => {
-    fetchSuccessWithData(getWidgetData, samplePlaylist);
-    fetchSuccessWithNull(getWidgetData);
+    await fetchSuccessWithData(getWidgetData, samplePlaylist);
+    await fetchSuccessWithNull(getWidgetData);
   });
   test("Widget request rejection", async () => {
-    fetchRejection(getWidgetData);
+    await fetchRejection(getWidgetData);
   });
 
   test("Requesting playlists by genres response", async () => {
-    fetchSuccessWithData(() => getPlaylist("pop"), samplePlaylist);
-    fetchSuccessWithNull(() => getPlaylist("pop"));
+    await fetchSuccessWithData(() => getPlaylist("pop"), [samplePlaylist], {
+      data: { results: [samplePlaylist] },
+    });
+    await fetchSuccessWithNull(() => getPlaylist("pop"));
   });
 
   test("Expecting playlists by genres error", async () => {
-    fetchRejection(() => getPlaylist("edm"));
+    await fetchRejection(() => getPlaylist("edm"));
   });
 
   test("Requesting playlists by id", async () => {
-    fetchSuccessWithData(() => getPlaylistData("02361"), samplePlaylist);
-    fetchSuccessWithNull(() => getPlaylistData("02361"));
+    await fetchSuccessWithData(() => getPlaylistData("02361"), samplePlaylist);
+    await fetchSuccessWithNull(() => getPlaylistData("02361"));
   });
   test("Expecting playlists by id error", async () => {
-    fetchRejection(() => getPlaylistData(""));
+    await fetchRejection(() => getPlaylistData(""));
   });
 
   test("Requesting albums by id", async () => {
-    fetchSuccessWithData(() => getAlbumData("01311"), sampleAlbum);
-    fetchSuccessWithNull(() => getAlbumData("01311"));
+    await fetchSuccessWithData(() => getAlbumData("01311"), sampleAlbum);
+    await fetchSuccessWithNull(() => getAlbumData("01311"));
   });
   test("Expecting albums by id error", async () => {
-    fetchRejection(() => getAlbumData(""));
+    await fetchRejection(() => getAlbumData(""));
   });
 
   describe("Testing getSearchResults", () => {
@@ -136,9 +134,7 @@ describe("Testing APIs", () => {
       globalThis.fetch = vi.fn().mockResolvedValue(mockResponse);
 
       const result = await getSearchResults("some query");
-      await waitFor(() => {
-        expect(result).toEqual(mockData.data);
-      });
+      expect(result).toEqual(mockData.data);
     });
 
     test("returns default data when data.data is not present", async () => {
@@ -170,15 +166,15 @@ describe("Testing APIs", () => {
     });
   });
   test("Expecting results by query error", async () => {
-    fetchRejection(() => getSearchResults("Eminem"));
+    await fetchRejection(() => getSearchResults("Eminem"), null);
   });
 
   test("Requesting artists by id", async () => {
-    fetchSuccessWithData(() => getArtistDetails("931242"), sampleArtist);
-    fetchSuccessWithNull(() => getArtistDetails("931242"));
+    await fetchSuccessWithData(() => getArtistDetails("931242"), sampleArtist);
+    await fetchSuccessWithNull(() => getArtistDetails("931242"));
   });
   test("Expecting artists by id error", async () => {
-    fetchRejection(() => getArtistDetails(""));
+    await fetchRejection(() => getArtistDetails(""));
   });
 
   test("Requesting albums by artist id", async () => {
@@ -192,10 +188,10 @@ describe("Testing APIs", () => {
     const res = await getArtistAlbums("19661");
     expect(res).toEqual(mockPayload);
 
-    fetchSuccessWithNull(() => getArtistAlbums("19661"));
+    await fetchSuccessWithNull(() => getArtistAlbums("19661"));
   });
   test("Expecting albums by artist id error", async () => {
-    fetchRejection(() => getArtistAlbums(""));
+    await fetchRejection(() => getArtistAlbums(""));
   });
 
   test("Requesting songs by artist id", async () => {
@@ -209,9 +205,9 @@ describe("Testing APIs", () => {
     const res = await getArtistSongs("19661");
     expect(res).toEqual(mockPayload);
 
-    fetchSuccessWithNull(() => getArtistSongs("19661"));
+    await fetchSuccessWithNull(() => getArtistSongs("19661"));
   });
   test("Expecting songs by artist id error", async () => {
-    fetchRejection(() => getArtistSongs(""));
+    await fetchRejection(() => getArtistSongs(""));
   });
 });

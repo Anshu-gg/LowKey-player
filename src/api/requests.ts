@@ -8,7 +8,7 @@ import {
 import { defaultSearchData } from "../utils/utils";
 const CACHE_TTL = 60000;
 const cache = new Map();
-const BASE_URL = "https://lowkey-backend.vercel.app";
+const BASE_URL = "base-url";
 
 export const clearRequestCache = () => {
   cache.clear();
