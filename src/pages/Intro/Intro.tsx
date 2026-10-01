@@ -1,9 +1,9 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import reactlogo from "../../assets/svgs/react.svg";
 import vitelogo from "../../assets/svgs/vite.svg";
 import tailwindlogo from "../../assets/svgs/tailwindcss.svg";
-import { useClearTimer } from "../../modules/hooks";
+import { animateScreen } from "../../helpers/animateScreen";
 
 const srcSet = `
   /landing/landing-480px.webp 480w,
@@ -27,27 +27,33 @@ export default function Intro() {
   const imageRef = useRef<HTMLImageElement | null>(null);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const btnRef = useRef<HTMLButtonElement | null>(null);
-  const timerRef = useRef<NodeJS.Timeout>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fadeOutNavigate = useCallback(() => {
-    if (imageRef.current) {
-      imageRef.current.classList.remove("animate-intro-fadein");
-      imageRef.current.classList.add("animate-intro-fadeout");
-    }
-    if (cardRef.current) {
-      cardRef.current.classList.remove("animate-card-fadein");
-      cardRef.current.classList.add("animate-card-fadeout");
-    }
-    if (btnRef.current) {
-      btnRef.current.classList.remove("animate-intro-fadein");
-      btnRef.current.classList.add("animate-intro-fadeout");
-    }
+    if (imageRef.current)
+      animateScreen(imageRef.current, "animate-intro-fadeout", {
+        direction: "exit",
+      });
+    if (cardRef.current)
+      animateScreen(cardRef.current, "animate-card-fadeout", {
+        direction: "exit",
+      });
+    if (btnRef.current)
+      animateScreen(btnRef.current, "animate-intro-fadeout", {
+        direction: "exit",
+      });
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
+      timerRef.current = null;
       navigate("/home");
-    }, 100);
+    }, 200);
   }, [navigate]);
 
-  useClearTimer.default(timerRef);
+  useEffect(() => {
+    return () => {
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   return (
     <div
@@ -61,7 +67,7 @@ export default function Intro() {
         sizes={sizes}
         alt="background"
         loading="eager"
-        decoding="async"
+        decoding="sync"
         fetchPriority="high"
         className="absolute left-0 top-0 h-full w-full animate-intro-fadein object-cover duration-200 ease-in"
       />
@@ -114,7 +120,7 @@ export default function Intro() {
                 src={reactlogo}
                 loading="eager"
                 fetchPriority="high"
-                className="h-[15px] w-[15px] saturate-0 transition-all duration-100 ease-in group-hover:rotate-45 group-hover:saturate-100"
+                className="h-[15px] w-[15px] saturate-0 transition-transform duration-100 ease-in group-hover:rotate-45 group-hover:saturate-100"
                 alt="React"
               />
             </li>

@@ -12,7 +12,7 @@ export default function ErrorFallback({ message }: { message: string }) {
       </h2>
       <button
         onClick={() => globalThis.location.reload()}
-        className="scale-95 animate-intro-fadein rounded-sm bg-black p-2.5 px-5 text-sm font-medium text-neutral-400 shadow-lg shadow-neutral-900 transition-all duration-150 ease-in hover:scale-100 hover:bg-neutral-400 hover:text-black"
+        className="scale-95 animate-intro-fadein rounded-sm bg-black p-2.5 px-5 text-sm font-medium text-neutral-400 shadow-lg shadow-neutral-900 transition-opacity duration-150 ease-in hover:scale-100 hover:bg-neutral-400 hover:text-black"
       >
         Reload page
       </button>

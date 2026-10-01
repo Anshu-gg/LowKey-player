@@ -11,7 +11,7 @@ export default function ListLoading() {
     >
       <div className="flex h-auto w-full flex-col items-center justify-start border-b border-black bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-black via-neutral-950 to-neutral-700 p-3 py-5 sm:px-4">
         <div className="flex h-auto w-full flex-col items-start justify-start pt-1 sm:flex-row sm:items-center sm:pt-1.5">
-          <div className="mr-4 h-[150px] w-[150px] animate-pulse bg-neutral-500"></div>
+          <div className="mr-4 h-[150px] w-[150px] animate-pulse bg-neutral-500 duration-200"></div>
           <div className="text-md mt-2 h-4 w-[60%] rounded-sm bg-neutral-500 sm:h-7 sm:w-[40%] sm:text-3xl"></div>
         </div>
         <div className="flex h-auto w-full items-center justify-between">

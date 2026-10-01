@@ -47,7 +47,6 @@ export default function Search() {
   const artistsResults = artists !== null && artists.results.length > 0;
   const playlistsResults = playlists !== null && playlists.results.length > 0;
   const songsResults = songs !== null && songs.results.length > 0;
-  const timerRef = useRef<NodeJS.Timeout>(null);
 
   const isResults =
     topQueryResults ||
@@ -75,12 +74,14 @@ export default function Search() {
   );
 
   useEffect(() => {
-    timerRef.current = animateScreen(searchEl);
+    if (!searchEl.current) return;
+    const clearTimer = animateScreen(searchEl.current, "song-fadeout");
     function resetSearch() {
       setSearch(defaultSearchData);
     }
     globalThis.addEventListener("beforeunload", resetSearch);
     return () => {
+      clearTimer();
       globalThis.removeEventListener("beforeunload", resetSearch);
     };
   }, [setSearch]);
@@ -148,12 +149,10 @@ const TopQuery = memo(
     const topEl = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-      const timer = setTimeout(() => {
-        topEl.current?.classList.remove("song-fadeout");
-        topEl.current?.classList.add("song-fadein");
-      }, 50);
+      if (!topEl.current) return;
+      const clearTimer = animateScreen(topEl.current, "song-fadeout");
       return () => {
-        clearTimeout(timer);
+        clearTimer();
       };
     }, []);
 
@@ -191,8 +190,9 @@ const TopQuery = memo(
             >
               <img
                 src={res.image?.[0]?.url || undefined}
-                loading="lazy"
-                decoding="async"
+                loading="eager"
+                decoding="sync"
+                fetchPriority="high"
                 alt={res.title ? cleanString(res.title) : "Unknown title"}
                 className="mr-4 h-[50px] w-[50px] rounded-sm"
               />
@@ -254,12 +254,14 @@ const SearchSong = memo(
     const searchSongEl = useRef<HTMLButtonElement>(null);
 
     useEffect(() => {
-      const timer = setTimeout(() => {
-        searchSongEl.current?.classList.remove("song-fadeout");
-        searchSongEl.current?.classList.add("song-fadein");
-      }, i * 10);
+      if (!searchSongEl.current) return;
+      const clearTimer = animateScreen(
+        searchSongEl.current,
+        "song-fadeout",
+        i * 50,
+      );
       return () => {
-        clearTimeout(timer);
+        clearTimer();
       };
     }, [i]);
 
@@ -332,12 +334,14 @@ const QueryPlaylist = memo(
     const qpImgEl = useRef<HTMLImageElement>(null);
 
     useEffect(() => {
-      const timer = setTimeout(() => {
-        qpImgEl.current?.classList.remove("image-fadeout");
-        qpImgEl.current?.classList.add("image-fadein");
-      }, i * 50);
+      if (!qpImgEl.current) return;
+      const clearTimer = animateScreen(
+        qpImgEl.current,
+        "image-fadeout",
+        i * 50,
+      );
       return () => {
-        clearTimeout(timer);
+        clearTimer();
       };
     }, [i]);
 
@@ -351,8 +355,8 @@ const QueryPlaylist = memo(
           <img
             ref={qpImgEl}
             src={image[1] ? image[1].url : fallback}
-            loading="lazy"
-            decoding="async"
+            loading="eager"
+            decoding="sync"
             width={150}
             height={150}
             fetchPriority="high"
@@ -393,12 +397,10 @@ QueryArtists.displayName = "QueryArtists";
 const QueryArtist = ({ id, title, image, i }: AlbumResult & { i: number }) => {
   const qaImgEl = useRef<HTMLImageElement>(null);
   useEffect(() => {
-    const timer = setTimeout(() => {
-      qaImgEl.current?.classList.remove("image-fadeout");
-      qaImgEl.current?.classList.add("image-fadein");
-    }, i * 50);
+    if (!qaImgEl.current) return;
+    const clearTimer = animateScreen(qaImgEl.current, "image-fadeout", i * 50);
     return () => {
-      clearTimeout(timer);
+      clearTimer();
     };
   }, [i]);
 
@@ -454,12 +456,10 @@ const QueryAlbum = ({
   const qalImg = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      qalImg.current?.classList.remove("image-fadeout");
-      qalImg.current?.classList.add("image-fadein");
-    }, i * 50);
+    if (!qalImg.current) return;
+    const clearTimer = animateScreen(qalImg.current, "image-fadeout", i * 50);
     return () => {
-      clearTimeout(timer);
+      clearTimer();
     };
   }, [i]);
 

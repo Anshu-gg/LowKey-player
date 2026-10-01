@@ -16,7 +16,6 @@ import pause from "../../assets/svgs/pause-icon.svg";
 const artistfallback = "/fallbacks/artist-fallback.png";
 const userplaylist = "/fallbacks/playlist-fallback.webp";
 import playlistIcon from "../../assets/svgs/playlist-icon.svg";
-import { useClearTimer } from "../../modules/hooks";
 import { fadeScreen, playCollection, saveLocal } from "../../modules/helpers";
 import {
   AlbumById,
@@ -41,8 +40,9 @@ export default function Library() {
   const albums = useBoundStore((state) => state.library.albums);
   const followings = useBoundStore((state) => state.library.followings);
   const libElRef = useRef<HTMLDivElement>(null);
+  const entryTimerRef = useRef<(() => void) | null>(null);
   const navigate = useNavigate();
-  const timerRef = useRef<NodeJS.Timeout>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
   function createNewPlaylist(
@@ -54,18 +54,24 @@ export default function Library() {
 
   function fadeOutNavigate(str: string) {
     if (libElRef.current) {
-      libElRef.current.classList.add("home-fadeout");
-      libElRef.current.classList.remove("home-fadein");
+      entryTimerRef.current?.();
+      animateScreen(libElRef.current, "home-fadeout", { direction: "exit" });
     }
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
+      timerRef.current = null;
       navigate(str);
-    }, 150);
+    }, 200);
   }
 
-  useClearTimer.default(timerRef);
   useEffect(() => {
-    timerRef.current = animateScreen(libElRef);
+    if (!libElRef.current) return;
+    entryTimerRef.current = animateScreen(libElRef.current, "home-fadeout");
     setHydrated(true);
+    return () => {
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
+      entryTimerRef.current?.();
+    };
   }, []);
 
   useEffect(() => {
@@ -86,7 +92,7 @@ export default function Library() {
       className="home-fadeout relative max-h-fit min-h-full w-full scroll-smooth bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-black via-neutral-950 to-neutral-700 pb-56 duration-200 ease-in"
     >
       <div className="flex h-auto w-auto items-center justify-between bg-inherit px-3 py-1">
-        <h2 className="text-2xl font-semibold text-white">Library</h2>
+        <h2 className="text-2xl font-medium text-white">Library</h2>
         <RouteNav />
       </div>
       <div className="my-2 flex h-auto w-full items-center justify-end px-3">
@@ -289,14 +295,14 @@ const CustomPlaylist = memo(
               fetchPriority="high"
               width={150}
               height={150}
-              className="h-full w-full scale-105 shadow-md shadow-black brightness-100 transition-all ease-linear group-hover:scale-100 group-hover:brightness-90 group-focus:scale-100"
+              className="h-full w-full scale-105 shadow-md shadow-black brightness-100 transition-transform ease-linear group-hover:scale-100 group-hover:brightness-90 group-focus:scale-100"
             />
           </div>
           <p className="mt-1.5 line-clamp-1 text-ellipsis whitespace-pre-line text-center text-sm font-semibold text-neutral-400 transition-colors ease-linear group-hover:text-white sm:text-sm">
             {playlist.name}
           </p>
         </div>
-        <div className="absolute left-0 top-0 -ml-2 flex h-[150px] w-full items-center justify-center opacity-0 transition-all ease-in group-hover:bg-[#0000004b] group-hover:opacity-100">
+        <div className="absolute left-0 top-0 -ml-2 flex h-[150px] w-full items-center justify-center opacity-0 transition-opacity ease-in group-hover:bg-[#0000004b] group-hover:opacity-100">
           {playlist.songs.length > 0 && (
             <HoverPlayButton key={playlist.name} playlist={playlist} />
           )}
@@ -438,7 +444,7 @@ const LibraryAlbum = memo(
           fanCount={""}
           shares={""}
         />
-        <div className="absolute left-0 top-0 -ml-2 flex h-[150px] w-full items-center justify-center opacity-0 transition-all ease-in hover:opacity-100 group-hover:bg-[#0000004b]">
+        <div className="absolute left-0 top-0 -ml-2 flex h-[150px] w-full items-center justify-center opacity-0 transition-opacity ease-in hover:opacity-100 group-hover:bg-[#0000004b]">
           <AlbumHoverPlayButton album={album} />
           <button
             type="button"
@@ -580,7 +586,7 @@ const LibraryPlaylist = memo(
           fanCount={""}
           shares={""}
         />
-        <div className="absolute left-0 top-0 -ml-2 flex h-[150px] w-full items-center justify-center opacity-0 transition-all ease-in group-hover:opacity-100">
+        <div className="absolute left-0 top-0 -ml-2 flex h-[150px] w-full items-center justify-center opacity-0 transition-opacity ease-in group-hover:opacity-100">
           <HoverPlayButton playlist={playlist} />
           <button
             type="button"

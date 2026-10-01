@@ -8,6 +8,7 @@ import {
 } from "../../types/GlobalTypes";
 import { sanitizeString } from "../../modules/helpers";
 import { useBoundStore } from "../../modules/hooks";
+import { animateScreen } from "../../helpers/animateScreen";
 const songfallback = "/fallbacks/song-fallback.webp";
 const { cleanString } = await sanitizeString();
 
@@ -42,7 +43,8 @@ const Recents = memo(() => {
           </h2>
           <img
             src={history}
-            decoding="async"
+            decoding="sync"
+            fetchPriority="high"
             alt="history"
             className="h-[20px] w-[20px]"
           />
@@ -61,7 +63,8 @@ const Recents = memo(() => {
           <h2 className="w-full text-sm font-medium text-white">Activity</h2>
           <img
             src={activity}
-            decoding="async"
+            decoding="sync"
+            fetchPriority="high"
             alt="activity"
             className="h-[20px] w-[20px]"
           />
@@ -91,12 +94,10 @@ const RecentSong = ({
   const recentEl = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      recentEl.current?.classList.remove("song-fadeout");
-      recentEl.current?.classList.add("song-fadein");
-    }, i * 50);
+    if (!recentEl.current) return;
+    const clearTimer = animateScreen(recentEl.current, "song-fadeout", i * 50);
     return () => {
-      clearTimeout(timer);
+      clearTimer();
     };
   }, [i]);
   return (
@@ -132,12 +133,14 @@ const Activity = memo(({ message, id, i }: ActivityType & { i: number }) => {
   const activityEl = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      activityEl.current?.classList.remove("song-fadeout");
-      activityEl.current?.classList.add("song-fadein");
-    }, i * 50);
+    if (!activityEl.current) return;
+    const clearTimer = animateScreen(
+      activityEl.current,
+      "song-fadeout",
+      i * 50,
+    );
     return () => {
-      clearTimeout(timer);
+      clearTimer();
     };
   }, [i]);
 

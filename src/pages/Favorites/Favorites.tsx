@@ -15,7 +15,7 @@ const favoritesImg = "/favorites.webp";
 const fallback = "/fallbacks/playlist-fallback.webp";
 import close from "../../assets/svgs/close.svg";
 import { AlbumById, PlaylistById, TrackDetails } from "../../types/GlobalTypes";
-import { useBoundStore, useClearTimer } from "../../modules/hooks";
+import { useBoundStore } from "../../modules/hooks";
 import { fadeScreen, playCollection, saveLocal } from "../../modules/helpers";
 const Song = lazy(() => import("../../components/Song/Song"));
 const RouteNav = lazy(() => import("../../components/RouteNav/RouteNav"));
@@ -33,7 +33,6 @@ export default function Favorites() {
   const playlists = useBoundStore((state) => state.favorites.playlists);
   const songs = useBoundStore((state) => state.favorites.songs);
   const favEl = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<NodeJS.Timeout>(null);
 
   useEffect(() => {
     saveToLocalStorage("local-favorites", {
@@ -43,9 +42,12 @@ export default function Favorites() {
     });
   }, [albums, playlists, songs]);
 
-  useClearTimer.default(timerRef);
   useEffect(() => {
-    timerRef.current = animateScreen(favEl);
+    if (!favEl.current) return;
+    const clearTimer = animateScreen(favEl.current, "home-fadeout");
+    return () => {
+      clearTimer();
+    };
   }, []);
 
   return (
@@ -67,10 +69,10 @@ export default function Favorites() {
             }}
             fetchPriority="high"
             loading="eager"
-            decoding="async"
+            decoding="sync"
             className="mr-4 h-[150px] w-[150px]"
           />
-          <p className="mt-1 line-clamp-1 h-auto w-[80%] text-ellipsis text-left text-xl font-semibold text-white sm:line-clamp-3 sm:w-[40%] sm:text-3xl sm:font-bold">
+          <p className="mt-1 line-clamp-1 h-auto w-[80%] text-ellipsis text-left text-xl font-medium text-white sm:line-clamp-3 sm:w-[40%] sm:text-3xl">
             Favorites
           </p>
         </div>
@@ -278,12 +280,14 @@ const FavoriteAlbum = ({
   );
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      albumImgEl.current?.classList.remove("image-fadeout");
-      albumImgEl.current?.classList.add("image-fadein");
-    }, i * 50);
+    if (!albumImgEl.current) return;
+    const clearTimer = animateScreen(
+      albumImgEl.current,
+      "image-fadeout",
+      i * 50,
+    );
     return () => {
-      clearTimeout(timer);
+      if (clearTimer) clearTimer();
     };
   }, [i]);
 
@@ -311,7 +315,7 @@ const FavoriteAlbum = ({
       <p className="mt-1 line-clamp-1 text-ellipsis whitespace-pre-line text-center text-xs font-semibold text-neutral-400 transition-colors group-hover:text-white group-focus:text-white">
         {album.name}
       </p>
-      <div className="absolute left-0 top-0 flex h-[150px] w-full items-center justify-center bg-transparent opacity-0 transition-all ease-in group-hover:opacity-100 group-focus:opacity-100">
+      <div className="absolute left-0 top-0 flex h-[150px] w-full items-center justify-center bg-transparent opacity-0 group-hover:opacity-100 group-focus:opacity-100">
         <button
           type="button"
           tabIndex={0}
@@ -409,12 +413,14 @@ const FavoritePlaylist = ({
   );
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      playlistImgEl.current?.classList.remove("image-fadeout");
-      playlistImgEl.current?.classList.add("image-fadein");
-    }, i * 50);
+    if (!playlistImgEl.current) return;
+    const clearTimer = animateScreen(
+      playlistImgEl.current,
+      "image-fadeout",
+      i * 50,
+    );
     return () => {
-      clearTimeout(timer);
+      clearTimer();
     };
   }, [i]);
 
@@ -434,14 +440,14 @@ const FavoritePlaylist = ({
           alt="playlist-image"
           width={150}
           height={150}
-          className="image-fadein h-full w-full scale-105 shadow-xl shadow-neutral-950 brightness-100 transition-all duration-200 ease-in group-hover:scale-100 group-hover:brightness-95 group-focus:scale-100 group-focus:brightness-75"
+          className="image-fadein h-full w-full scale-105 shadow-xl shadow-neutral-950 brightness-100 transition-transform duration-200 ease-in group-hover:scale-100 group-hover:brightness-95 group-focus:scale-100 group-focus:brightness-75"
           onError={(e) => (e.currentTarget.src = fallback)}
         />
       </div>
       <p className="mt-1 line-clamp-1 text-ellipsis whitespace-pre-line text-center text-xs font-semibold text-neutral-400 transition-colors group-hover:text-white group-focus:text-white">
         {playlist.name}
       </p>
-      <div className="absolute left-0 top-0 flex h-[150px] w-full items-center justify-center bg-transparent opacity-0 transition-all ease-in group-hover:opacity-100 group-focus:opacity-100">
+      <div className="absolute left-0 top-0 flex h-[150px] w-full items-center justify-center bg-transparent opacity-0 transition-opacity ease-in group-hover:opacity-100 group-focus:opacity-100">
         <button
           type="button"
           tabIndex={0}

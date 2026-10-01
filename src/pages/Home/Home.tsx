@@ -1,4 +1,4 @@
-import { lazy, memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { lazy, memo, useEffect, useMemo, useRef } from "react";
 import { preconnect, preload } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { useBoundStore } from "../../modules/hooks";
@@ -10,9 +10,9 @@ import viral from "../../assets/svgs/viral.svg";
 import { Image, PlaylistById, TrackDetails } from "../../types/GlobalTypes";
 import { getWidgetData } from "../../api/requests";
 import { genres } from "../../utils/utils";
-import { useClearTimer } from "../../modules/hooks";
 import { Widgetfallback } from "./Loading";
 import { useQuery } from "@tanstack/react-query";
+import { animateScreen } from "../../helpers/animateScreen";
 const Song = lazy(() => import("../../components/Song/Song"));
 const Section = lazy(() => import("../../components/Section/Section"));
 
@@ -26,43 +26,30 @@ preload(
 );
 
 export default function Home() {
-  const changeGreeting = useBoundStore((state) => state.changeGreeting);
-  const greeting = useBoundStore((state) => state.greeting);
   const homeRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const timerRef = useRef<NodeJS.Timeout>(null);
-
-  const setGreeting = useCallback(() => {
-    const hour = new Date().getHours();
-    if (hour >= 6 && hour <= 12) {
-      changeGreeting("Good morning");
-    } else if (hour > 12 && hour <= 15) {
-      changeGreeting("Good afternoon");
-    } else if (hour > 15 && hour <= 18) {
-      changeGreeting("Good evening");
-    } else if (hour > 18) {
-      changeGreeting("Good night");
-    } else {
-      changeGreeting("Jump back in");
-    }
-  }, [changeGreeting]);
+  const entryTimerRef = useRef<(() => void) | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function fadeOutNavigate(str: string) {
-    homeRef.current?.classList.remove("home-fadein");
-    homeRef.current?.classList.add("home-fadeout");
+    if (!homeRef.current) return;
+    entryTimerRef.current?.();
+    animateScreen(homeRef.current, "home-fadeout", { direction: "exit" });
+    if (timerRef.current !== null) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
+      timerRef.current = null;
       navigate(str);
-    }, 180);
+    }, 300);
   }
 
-  useClearTimer.default(timerRef);
   useEffect(() => {
-    if (greeting === "") setGreeting();
-    timerRef.current = setTimeout(() => {
-      homeRef.current?.classList.remove("home-fadeout");
-      homeRef.current?.classList.add("home-fadein");
-    }, 180);
-  }, [greeting, setGreeting]);
+    if (!homeRef.current) return;
+    entryTimerRef.current = animateScreen(homeRef.current, "home-fadeout");
+    return () => {
+      entryTimerRef.current?.();
+      if (timerRef.current !== null) clearTimeout(timerRef.current);
+    };
+  }, []);
 
   return (
     <div
@@ -100,9 +87,10 @@ export const Widget = memo(
       staleTime: 1000 * 60 * 10,
       gcTime: 1000 * 60 * 10,
     });
-
     const iRef = useRef<HTMLImageElement>(null);
     const widgetRef = useRef<HTMLDivElement>(null);
+    const clearITimer = useRef<(() => void) | null>(null);
+    const clearWidgetTimer = useRef<(() => void) | null>(null);
     const lcpImg =
       data?.image?.find((img: Image) => img.quality === "500x500")?.url ??
       widgetfallback;
@@ -113,11 +101,28 @@ export const Widget = memo(
     );
 
     function handleImageLoad() {
-      iRef.current?.classList.remove("widget-banner-fadeout");
-      iRef.current?.classList.add("widget-banner-fadein");
-      widgetRef.current?.classList.remove("song-fadeout");
-      widgetRef.current?.classList.add("song-fadein");
+      if (iRef.current) {
+        clearITimer.current?.();
+        clearITimer.current = animateScreen(
+          iRef.current,
+          "widget-banner-fadeout",
+        );
+      }
+      if (widgetRef.current) {
+        clearWidgetTimer.current?.();
+        clearWidgetTimer.current = animateScreen(
+          widgetRef.current,
+          "song-fadeout",
+        );
+      }
     }
+
+    useEffect(() => {
+      return () => {
+        clearITimer.current?.();
+        clearWidgetTimer.current?.();
+      };
+    }, []);
 
     if (isLoading || error) {
       return <Widgetfallback />;
@@ -248,7 +253,7 @@ export const TimelyPlaylists = memo(
           data-testid="today-playlist"
           role="link"
           onClick={() => fadeOutNavigate("/playlists/1223482895")}
-          className="flex h-[50px] w-full items-center justify-start overflow-hidden rounded-sm bg-neutral-800 shadow-sm outline-none transition-all ease-linear hover:text-rose-500 hover:shadow-md hover:shadow-rose-500 focus-visible:bg-neutral-700 sm:h-full"
+          className="flex h-[50px] w-full items-center justify-start overflow-hidden rounded-sm bg-neutral-800 shadow-sm outline-none transition-shadow hover:text-rose-500 hover:shadow-sm hover:shadow-rose-500 focus-visible:bg-neutral-700 sm:h-full"
         >
           <img
             src={viral}
@@ -269,7 +274,7 @@ export const TimelyPlaylists = memo(
           data-testid="weekly-playlist"
           role="link"
           onClick={() => fadeOutNavigate("/playlists/2252904")}
-          className="flex h-[50px] w-full items-center justify-start overflow-hidden rounded-sm bg-neutral-800 shadow-sm outline-none transition-all ease-linear hover:text-teal-500 hover:shadow-md hover:shadow-teal-500 focus-visible:bg-neutral-700 sm:h-auto"
+          className="flex h-[50px] w-full items-center justify-start overflow-hidden rounded-sm bg-neutral-800 shadow-sm outline-none transition-shadow hover:text-teal-500 hover:shadow-sm hover:shadow-teal-500 focus-visible:bg-neutral-700 sm:h-auto"
         >
           <img
             src={timely}
@@ -290,7 +295,7 @@ export const TimelyPlaylists = memo(
           data-testid="monthly-playlist"
           role="link"
           onClick={() => fadeOutNavigate("/playlists/158206266")}
-          className="flex h-12 w-full items-center justify-start overflow-hidden rounded-sm bg-neutral-800 shadow-sm outline-none transition-all ease-linear hover:text-yellow-500 hover:shadow-md hover:shadow-yellow-500 focus-visible:bg-neutral-700 sm:h-auto"
+          className="flex h-12 w-full items-center justify-start overflow-hidden rounded-sm bg-neutral-800 shadow-sm outline-none transition-shadow hover:text-yellow-500 hover:shadow-sm hover:shadow-yellow-500 focus-visible:bg-neutral-700 sm:h-auto"
         >
           <img
             src={timely}
@@ -311,7 +316,7 @@ export const TimelyPlaylists = memo(
           data-testid="yearly-playlist"
           role="link"
           onClick={() => fadeOutNavigate("/playlists/1210453303")}
-          className="flex h-[50px] w-full items-center justify-start overflow-hidden rounded-sm bg-neutral-800 shadow-sm outline-none transition-all ease-linear hover:text-purple-500 hover:shadow-md hover:shadow-purple-500 focus-visible:bg-neutral-700 sm:h-auto"
+          className="flex h-[50px] w-full items-center justify-start overflow-hidden rounded-sm bg-neutral-800 shadow-sm outline-none transition-shadow hover:text-purple-500 hover:shadow-sm hover:shadow-purple-500 focus-visible:bg-neutral-700 sm:h-auto"
         >
           <img
             src={timely}

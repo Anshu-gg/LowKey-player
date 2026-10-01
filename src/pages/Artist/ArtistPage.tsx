@@ -1,7 +1,7 @@
 import { lazy, memo, Suspense, useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import { preconnect, preload } from "react-dom";
-import { useClearTimer } from "../../modules/hooks";
+
 import { fadeScreen } from "../../modules/helpers";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import x from "../../assets/svgs/icons8-twitterx.svg";
@@ -33,11 +33,13 @@ preconnect("https://lowkeymusic-v2.netlify.app");
 export default function ArtistPage() {
   const { id } = useParams();
   const artistEl = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<NodeJS.Timeout>(null);
 
-  useClearTimer.default(timerRef);
   useEffect(() => {
-    timerRef.current = animateScreen(artistEl);
+    if (!artistEl.current) return;
+    const clearTimer = animateScreen(artistEl.current, "home-fadeout");
+    return () => {
+      clearTimer();
+    };
   }, [id]);
 
   return (
@@ -58,6 +60,9 @@ export const ArtistInfo = memo(({ id }: { id: string }) => {
   const artistImgEl = useRef<HTMLImageElement>(null);
   const artistTitleEl = useRef<HTMLParagraphElement>(null);
   const artistEl = useRef<HTMLDivElement>(null);
+  const clearElTimer = useRef<(() => void) | null>(null);
+  const clearImgTimer = useRef<(() => void) | null>(null);
+  const clearTitleTimer = useRef<(() => void) | null>(null);
 
   const { data } = useQuery({
     queryKey: ["artistdetails", id],
@@ -84,13 +89,33 @@ export const ArtistInfo = memo(({ id }: { id: string }) => {
   };
 
   function handleImageLoad() {
-    artistEl.current?.classList.remove("home-fadeout");
-    artistEl.current?.classList.add("home-fadein");
-    artistImgEl.current?.classList.remove("image-fadeout");
-    artistTitleEl.current?.classList.remove("song-fadeout");
-    artistImgEl.current?.classList.add("image-fadein");
-    artistTitleEl.current?.classList.add("song-fadein");
+    if (artistEl.current) {
+      clearElTimer.current?.();
+      clearElTimer.current = animateScreen(artistEl.current, "home-fadeout");
+    }
+    if (artistImgEl.current) {
+      clearImgTimer.current?.();
+      clearImgTimer.current = animateScreen(
+        artistImgEl.current,
+        "image-fadeout",
+      );
+    }
+    if (artistTitleEl.current) {
+      clearTitleTimer.current?.();
+      clearTitleTimer.current = animateScreen(
+        artistTitleEl.current,
+        "song-fadeout",
+      );
+    }
   }
+
+  useEffect(() => {
+    return () => {
+      clearElTimer.current?.();
+      clearImgTimer.current?.();
+      clearTitleTimer.current?.();
+    };
+  }, []);
 
   return (
     <Suspense fallback={<ArtistInfoFallback />}>
@@ -276,14 +301,25 @@ const ArtistAlbum = ({
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      albumImgEl.current?.classList.remove("image-fadeout");
-      albumTitleEl.current?.classList.remove("song-fadeout");
-      albumImgEl.current?.classList.add("image-fadein");
-      albumTitleEl.current?.classList.add("song-fadein");
-    }, i * 50);
+    let clearImgTimer: (() => void) | undefined;
+    let clearTitleTimer: (() => void) | undefined;
+    if (albumImgEl.current) {
+      clearImgTimer = animateScreen(
+        albumImgEl.current,
+        "image-fadeout",
+        i * 50,
+      );
+    }
+    if (albumTitleEl.current) {
+      clearTitleTimer = animateScreen(
+        albumTitleEl.current,
+        "song-fadeout",
+        i * 50,
+      );
+    }
     return () => {
-      clearTimeout(timer);
+      clearImgTimer?.();
+      clearTitleTimer?.();
     };
   }, [id, i]);
 
@@ -304,7 +340,7 @@ const ArtistAlbum = ({
           height={150}
           loading="eager"
           fetchPriority="high"
-          className="image-fadeout scale-105 transition-all duration-150 ease-in hover:scale-100 group-hover:brightness-110 group-focus:scale-100"
+          className="image-fadeout scale-105 transition-transform duration-150 ease-in hover:scale-100 group-hover:brightness-110 group-focus:scale-100"
         />
       </div>
       <p

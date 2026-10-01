@@ -7,13 +7,11 @@ const nf1024 = "/notfound/notfound-landscape-1024px.webp";
 const nf1280 = "/notfound/notfound-landscape-1280px.webp";
 const nf1536 = "/notfound/notfound-landscape-1536px.webp";
 import { fadeScreen } from "../../modules/helpers";
-import { useClearTimer } from "../../modules/hooks";
 const { animateScreen } = await fadeScreen();
 
 export default function NotFound() {
   const [nfImg, setNfImg] = useState<string>("");
   const nfEl = useRef<HTMLImageElement>(null);
-  const timerRef = useRef<NodeJS.Timeout>(null);
 
   function imageResize() {
     switch (true) {
@@ -41,13 +39,14 @@ export default function NotFound() {
     }
   }
 
-  useClearTimer.default(timerRef);
   useEffect(() => {
-    timerRef.current = animateScreen(nfEl);
+    if (!nfEl.current) return;
+    const clearTimer = animateScreen(nfEl.current, "home-fadeout");
     imageResize();
     globalThis.addEventListener("load", imageResize);
     globalThis.addEventListener("resize", imageResize);
     return () => {
+      clearTimer();
       globalThis.removeEventListener("load", imageResize);
       globalThis.removeEventListener("resize", imageResize);
     };

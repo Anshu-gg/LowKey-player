@@ -2,7 +2,7 @@ export default function SectionLoading() {
   return (
     <div
       data-testid="section-fallback"
-      className="mb-2 flex h-auto w-full animate-pulse flex-col overflow-x-hidden bg-transparent py-2 pt-3"
+      className="mb-2 flex h-auto w-full flex-col overflow-x-hidden bg-transparent py-2 pt-3 duration-200"
     >
       <div className="ml-4 h-[20px] w-44 rounded-sm bg-neutral-500 px-4 py-1"></div>
       <ul className="flex h-48 w-full overflow-hidden whitespace-nowrap p-4">

@@ -662,7 +662,7 @@ const VolumeControl = memo(
           id="volumeSlider"
           tabIndex={name === "" ? -1 : 0}
           min={0}
-          className="h-auto w-full cursor-pointer appearance-none shadow-inner shadow-neutral-950 transition-all ease-linear focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed"
+          className="h-auto w-full cursor-pointer appearance-none shadow-inner shadow-neutral-950 ease-linear focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed"
           max={1}
           step={0.1}
           aria-label="Volume"

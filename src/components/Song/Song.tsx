@@ -20,6 +20,7 @@ import {
   toggleFavorited,
 } from "../../modules/helpers";
 import { TrackDetails, UserPlaylist } from "../../types/GlobalTypes";
+import { animateScreen } from "../../helpers/animateScreen";
 
 const { cleanString } = await sanitizeString();
 const secondsToHMS = await formatTime();
@@ -68,26 +69,23 @@ export default function Song({
   );
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (songEl.current) {
-        songEl.current.classList.remove("song-fadeout");
-        songEl.current.classList.add("song-fadein");
-      }
-      if (titleEl.current) {
-        titleEl.current.classList.remove("song-fadeout");
-        titleEl.current.classList.add("song-fadein");
-      }
-      if (durationEl.current) {
-        durationEl.current.classList.remove("song-fadeout");
-        durationEl.current.classList.add("song-fadein");
-      }
-      if (imgEl.current) {
-        imgEl.current.classList.remove("image-fadeout");
-        imgEl.current.classList.add("image-fadein");
-      }
-    }, index * 20);
+    const timerFns: { (): void; (): void; (): void; (): void }[] = [];
+    if (songEl.current) {
+      timerFns.push(animateScreen(songEl.current, "song-fadeout", index * 20));
+    }
+    if (titleEl.current) {
+      timerFns.push(animateScreen(titleEl.current, "song-fadeout", index * 20));
+    }
+    if (durationEl.current) {
+      timerFns.push(
+        animateScreen(durationEl.current, "song-fadeout", index * 20),
+      );
+    }
+    if (imgEl.current) {
+      timerFns.push(animateScreen(imgEl.current, "image-fadeout", index * 20));
+    }
     return () => {
-      clearTimeout(timer);
+      timerFns.forEach((fn) => fn());
     };
   }, [index]);
 
@@ -99,12 +97,12 @@ export default function Song({
       tabIndex={0}
       role="listitem"
       style={{
-        transitionDelay: `${index * 10}ms`,
+        transitionDelay: `${index * 20}ms`,
       }}
       data-testid="song"
-      className="song-fadeout group h-12 w-full flex-shrink-0 cursor-pointer overflow-hidden rounded-sm border-b border-neutral-900 text-sm outline-none transition-colors duration-75 ease-in focus-within:bg-neutral-700 hover:bg-neutral-700 focus:bg-neutral-700"
+      className="song-fadeout group h-12 w-full flex-shrink-0 cursor-pointer overflow-hidden rounded-sm border-b border-neutral-900 text-sm outline-none transition-colors duration-150 ease-in focus-within:bg-neutral-700 hover:bg-neutral-700 focus:bg-neutral-700"
     >
-      <div className="flex h-full w-full items-center justify-start p-0 pr-2 transition-all ease-in-out">
+      <div className="flex h-full w-full items-center justify-start p-0 pr-2">
         <img
           ref={imgEl}
           src={track?.image[0]?.url}
@@ -113,8 +111,8 @@ export default function Song({
           height={50}
           fetchPriority="high"
           loading="eager"
-          decoding="async"
-          className="image-fadeout mr-4 h-[50px] w-[50px] bg-black transition-all duration-200 ease-in"
+          decoding="sync"
+          className="image-fadeout mr-4 h-[50px] w-[50px] bg-black"
           onError={(e) => (e.currentTarget.src = fallback)}
         />
         <p
@@ -181,7 +179,7 @@ const FavoriteButton = ({ track }: { track: TrackDetails }) => {
       tabIndex={0}
       type="button"
       data-testid="favorite-btn"
-      className={`h-auto w-[20px] flex-shrink-0 bg-transparent p-0 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-visible:ring-2 group-focus-visible:ring-emerald-500 ${isFavorited ? "opacity-100" : "opacity-0"}`}
+      className={`h-auto w-[20px] flex-shrink-0 bg-transparent p-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-visible:ring-2 group-focus-visible:ring-emerald-500 ${isFavorited ? "opacity-100" : "opacity-0"}`}
       onClick={handleFavorite}
     >
       <img
@@ -190,6 +188,7 @@ const FavoriteButton = ({ track }: { track: TrackDetails }) => {
         src={isFavorited ? fav : notfav}
         alt="fav-icon"
         loading="lazy"
+        className="h-[18px] w-[18px]"
       />
     </button>
   );
@@ -225,7 +224,7 @@ const AddToPlaylistButton = ({ track }: { track: TrackDetails }) => {
       type="button"
       data-testid="playlist-btn"
       onClick={handleAdd}
-      className={`flex-shrink-0 border bg-transparent p-0 opacity-0 transition-opacity focus:opacity-100 focus:ring-2 focus:ring-emerald-500 group-hover:opacity-100 ${playlist?.id ? "opacity-100" : "opacity-0"}`}
+      className={`flex-shrink-0 border bg-transparent p-0 opacity-0 transition-opacity duration-150 focus:opacity-100 focus:ring-2 focus:ring-emerald-500 group-hover:opacity-100 ${playlist?.id ? "opacity-100" : "opacity-0"}`}
     >
       <img
         width={18}
@@ -266,12 +265,14 @@ const Artist = memo(
     );
 
     useEffect(() => {
-      const timer = setTimeout(() => {
-        artistEl.current?.classList.remove("song-fadeout");
-        artistEl.current?.classList.add("song-fadein");
-      }, i * 100);
+      if (!artistEl.current) return;
+      const clearTimer = animateScreen(
+        artistEl.current,
+        "song-fadeout",
+        i * 100,
+      );
       return () => {
-        clearTimeout(timer);
+        clearTimer();
       };
     }, [i]);
 
@@ -284,7 +285,7 @@ const Artist = memo(
         onClick={navigateToArtist}
         tabIndex={0}
         onKeyDown={navigateToArtist}
-        className="song-fadeout cursor-pointer whitespace-nowrap py-4 text-xs text-neutral-400 duration-200 ease-in hover:text-white"
+        className="song-fadeout cursor-pointer whitespace-nowrap py-4 text-xs text-neutral-400 transition-opacity duration-150 ease-in hover:text-white"
       >
         {artistName ? cleanString(artistName) : "Unknown Artist"}
       </div>

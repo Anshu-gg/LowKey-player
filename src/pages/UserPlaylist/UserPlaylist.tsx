@@ -18,7 +18,6 @@ import {
   TrackDetails,
   UserPlaylist,
 } from "../../types/GlobalTypes";
-import { useClearTimer } from "../../modules/hooks";
 import { fadeScreen, playCollection } from "../../modules/helpers";
 const Song = lazy(() => import("../../components/Song/Song"));
 const RouteNav = lazy(() => import("../../components/RouteNav/RouteNav"));
@@ -35,7 +34,6 @@ export default function UserPlaylistPage() {
   const setUserPlaylist = useBoundStore((state) => state.setUserPlaylist);
   const { id } = useParams();
   const upEl = useRef(null);
-  const timerRef = useRef<NodeJS.Timeout>(null);
   const playlist: UserPlaylist | undefined = useMemo(
     () =>
       userPlaylists.find(
@@ -44,7 +42,6 @@ export default function UserPlaylistPage() {
     [userPlaylists, id],
   );
 
-  useClearTimer.default(timerRef);
   useEffect(() => {
     const localSaves = localStorage.getItem("local-library");
     if (localSaves !== null) {
@@ -59,7 +56,11 @@ export default function UserPlaylistPage() {
         console.error("Failed to parse local library from localStorage:", err);
       }
     }
-    timerRef.current = animateScreen(upEl);
+    if (!upEl.current) return;
+    const clearTimer = animateScreen(upEl.current, "home-fadeout");
+    return () => {
+      clearTimer();
+    };
   }, [id, setUserPlaylist]);
 
   return (

@@ -4,6 +4,7 @@ import {
   startTransition,
   Suspense,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
 } from "react";
@@ -20,7 +21,6 @@ import addPlaylist from "../../assets/svgs/icons8-addplaylist-28.svg";
 import addedToPlaylist from "../../assets/svgs/tick.svg";
 import { Image, PlaylistById, TrackDetails } from "../../types/GlobalTypes";
 import { getPlaylistData } from "../../api/requests";
-import { useClearTimer } from "../../modules/hooks";
 import {
   sanitizeString,
   fadeScreen,
@@ -42,7 +42,7 @@ preconnect("https://lowkeymusic-v2.netlify.app");
 export default function PlaylistPage() {
   const { id } = useParams();
   const playEl = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<NodeJS.Timeout>(null);
+  const clearTimer = useRef<(() => void) | null>(null);
 
   const { data } = useQuery({
     queryKey: ["playlistPage", id],
@@ -59,10 +59,17 @@ export default function PlaylistPage() {
   });
 
   function handleImageLoad() {
-    timerRef.current = animateScreen(playEl);
+    if (!playEl.current) return;
+    clearTimer.current?.();
+    clearTimer.current = animateScreen(playEl.current, "home-fadeout");
   }
 
-  useClearTimer.default(timerRef);
+  useEffect(() => {
+    return () => {
+      clearTimer.current?.();
+    };
+  }, []);
+
   if (!data) return null;
   return (
     <Suspense fallback={<ListLoading />}>

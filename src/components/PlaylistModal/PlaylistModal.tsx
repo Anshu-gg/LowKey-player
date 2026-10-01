@@ -53,7 +53,7 @@ export default function PlaylistModal({
             onClick={() => {
               setRevealCreation(false);
             }}
-            className="flex-shrink-0 whitespace-nowrap bg-neutral-700 p-1 transition-all ease-out hover:bg-neutral-600 focus-visible:bg-neutral-500"
+            className="flex-shrink-0 whitespace-nowrap bg-neutral-700 p-1 transition-colors ease-out hover:bg-neutral-600 focus-visible:bg-neutral-500"
             aria-label="Close playlist modal"
           >
             <img
@@ -160,7 +160,7 @@ const PlaylistInput = ({
         tabIndex={0}
         data-testid="create-playlist-btn"
         onClick={createNew}
-        className="h-full whitespace-nowrap rounded-sm bg-neutral-400 px-3 text-sm font-semibold text-black transition-all ease-out hover:bg-white focus-visible:bg-white"
+        className="h-full whitespace-nowrap rounded-sm bg-neutral-400 px-3 text-sm font-semibold text-black transition-colors ease-out hover:bg-white focus-visible:bg-white"
         aria-label="Create new playlist"
       >
         <img

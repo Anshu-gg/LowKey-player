@@ -25,7 +25,6 @@ import {
   playCollection,
   sanitizeString,
 } from "../../modules/helpers";
-import { useClearTimer } from "../../modules/hooks";
 import { useQuery } from "@tanstack/react-query";
 const Song = lazy(() => import("../../components/Song/Song"));
 const ListLoading = lazy(() => import("../Playlist/Loading"));
@@ -43,7 +42,7 @@ preconnect("https://lowkeymusic-v2.netlify.app");
 export default function AlbumPage() {
   const { id } = useParams();
   const albumEl = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<NodeJS.Timeout>(null);
+  const clearTimer = useRef<(() => void) | null>(null);
   const { data } = useQuery({
     queryKey: ["albumPage", id],
     queryFn: async () => {
@@ -59,10 +58,16 @@ export default function AlbumPage() {
   });
 
   function handleImageLoad() {
-    timerRef.current = animateScreen(albumEl);
+    if (!albumEl.current) return;
+    clearTimer.current?.();
+    clearTimer.current = animateScreen(albumEl.current, "home-fadeout");
   }
 
-  useClearTimer.default(timerRef);
+  useEffect(() => {
+    return () => {
+      clearTimer.current?.();
+    };
+  }, []);
 
   return (
     <Suspense fallback={<ListLoading />}>
@@ -255,10 +260,18 @@ const AlbumInfo = memo(
     };
 
     useEffect(() => {
-      imgEl.current?.classList.remove("image-fadeout");
-      titleEl.current?.classList.remove("song-fadeout");
-      imgEl.current?.classList.add("image-fadein");
-      titleEl.current?.classList.add("song-fadein");
+      let clearImgTimer: () => void;
+      let clearTitleTimer: () => void;
+      if (imgEl.current) {
+        clearImgTimer = animateScreen(imgEl.current, "image-fadeout");
+      }
+      if (titleEl.current) {
+        clearTitleTimer = animateScreen(titleEl.current, "song-fadeout");
+      }
+      return () => {
+        if (clearImgTimer) clearImgTimer();
+        if (clearTitleTimer) clearTitleTimer();
+      };
     }, []);
 
     return (

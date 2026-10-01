@@ -1,3 +1,4 @@
+import { animateScreen } from "../../helpers/animateScreen";
 import { PlaylistById } from "../../types/GlobalTypes";
 const fallback = "/fallbacks/playlist-fallback.webp";
 import { useEffect, useMemo, useRef } from "react";
@@ -9,7 +10,7 @@ export default function Playlist({
   i,
   fadeOutNavigate,
 }: PlaylistById & { i: number; fadeOutNavigate: (_str: string) => void }) {
-  const playlistImgEl = useRef<HTMLImageElement>(null);
+  const playlistEl = useRef<HTMLButtonElement>(null);
 
   const { newImage } = useMemo(() => {
     let newImage = fallback;
@@ -21,31 +22,33 @@ export default function Playlist({
   }, [image]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (playlistImgEl.current) {
-        playlistImgEl.current.classList.remove("image-fadeout");
-        playlistImgEl.current.classList.add("image-fadein");
-      }
-    }, i * 50);
-    return () => clearTimeout(timer);
+    if (!playlistEl.current) return;
+    const animateTimer = animateScreen(
+      playlistEl.current as HTMLButtonElement,
+      "image-fadeout",
+      i * 50,
+    ) as () => void;
+    return () => {
+      if (animateTimer) animateTimer();
+    };
   }, [i]);
 
   return (
     <button
       data-testid="playlist"
-      className="group mr-4 flex h-[180px] w-[150px] flex-shrink-0 cursor-pointer list-none flex-col items-center overflow-hidden outline-none"
+      ref={playlistEl}
+      className="image-fadeout transform-[filter] group mr-4 flex h-[180px] w-[150px] flex-shrink-0 cursor-pointer list-none flex-col items-center overflow-hidden outline-none brightness-100 duration-300 ease-linear hover:brightness-90 focus:brightness-90"
       onClick={() => fadeOutNavigate(`/playlists/${id}`)}
     >
       <div className="h-[150px] w-[150px] overflow-hidden">
         <img
-          ref={playlistImgEl}
           src={newImage}
           alt={name}
           loading="eager"
           fetchPriority="high"
           width={150}
           height={150}
-          className="image-fadeout scale-105 shadow-md shadow-black brightness-100 transition-all ease-linear group-hover:scale-100 group-hover:brightness-90 group-focus:scale-100 group-focus:brightness-90"
+          className="h-[150px] w-[150px] scale-105 shadow-md shadow-black transition-transform duration-100 ease-in group-hover:scale-100 group-focus:scale-100"
           onError={(e) => (e.currentTarget.src = fallback)}
         />
       </div>
