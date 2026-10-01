@@ -12,7 +12,14 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { Suspense } from "react";
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import {
   afterEach,
   beforeAll,
@@ -50,6 +57,20 @@ const mockedUseQuery = vi.mocked(useQuery);
 let observerInstance: IntersectionObserverMock | null;
 const { setIsPlaying, setQueue } = useBoundStore.getState();
 const fadeOutNavigate = vi.fn(() => {});
+
+const CurrentPath = () => {
+  const { pathname } = useLocation();
+  return <span data-testid="current-path">{pathname}</span>;
+};
+
+const LeaveHome = () => {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => navigate("/away")}>
+      Leave Home
+    </button>
+  );
+};
 
 beforeAll(async () => {
   await import("../../components/Song/Song");
@@ -138,64 +159,130 @@ describe("Home", () => {
     const timely = screen.getByTestId("timely-playlists");
     expect(timely).toBeInTheDocument();
   });
-  describe("greeting", () => {
-    test('should be "Good morning" at 9 AM', async () => {
-      vi.setSystemTime(new Date("2025-01-01T09:00:00"));
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <MemoryRouter initialEntries={["/home"]}>
-            <Home />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-      expect(useBoundStore.getState().greeting).toBe("Good morning");
-    });
-    test('should be "Good afternoon" at 2 PM', async () => {
-      vi.setSystemTime(new Date("2025-01-01T14:00:00"));
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <MemoryRouter initialEntries={["/home"]}>
-            <Home />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-      expect(useBoundStore.getState().greeting).toBe("Good afternoon");
-    });
-    test('should be "Good evening" at 5 PM', async () => {
-      vi.setSystemTime(new Date("2025-01-01T17:00:00"));
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <MemoryRouter initialEntries={["/home"]}>
-            <Home />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-      expect(useBoundStore.getState().greeting).toBe("Good evening");
-    });
-    test('should be "Good evening" at 8 PM', async () => {
-      vi.setSystemTime(new Date("2025-01-01T20:00:00"));
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <MemoryRouter initialEntries={["/home"]}>
-            <Home />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-      expect(useBoundStore.getState().greeting).toBe("Good night");
-    });
-    test('should be "Jump back in"', async () => {
-      vi.setSystemTime(new Date(""));
-      render(
-        <QueryClientProvider client={new QueryClient()}>
-          <MemoryRouter initialEntries={["/home"]}>
-            <Home />
-          </MemoryRouter>
-        </QueryClientProvider>,
-      );
-      expect(useBoundStore.getState().greeting).toBe("Jump back in");
-    });
+  test("fades out before navigating from a timely playlist", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/home"]}>
+          <Routes>
+            <Route path="/home" element={<Home />} />
+            <Route
+              path="/playlists/1223482895"
+              element={<div>Playlist destination</div>}
+            />
+          </Routes>
+          <CurrentPath />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    act(() => vi.advanceTimersByTime(150));
+    const home = screen.getByTestId("home-page");
+    fireEvent.click(screen.getByTestId("today-playlist"));
+
+    expect(home).toHaveClass("home-fadeout");
+    expect(home).not.toHaveClass("home-fadein");
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/home");
+    act(() => vi.advanceTimersByTime(299));
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/home");
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.getByTestId("current-path")).toHaveTextContent(
+      "/playlists/1223482895",
+    );
+    expect(screen.getByText("Playlist destination")).toBeInTheDocument();
+  });
+
+  test("clears pending navigation when Home unmounts", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/home"]}>
+          <Routes>
+            <Route path="/home" element={<Home />} />
+            <Route path="/away" element={<div>Other destination</div>} />
+            <Route
+              path="/playlists/1223482895"
+              element={<div>Playlist destination</div>}
+            />
+          </Routes>
+          <LeaveHome />
+          <CurrentPath />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    act(() => vi.advanceTimersByTime(150));
+    fireEvent.click(screen.getByTestId("today-playlist"));
+    fireEvent.click(screen.getByText("Leave Home"));
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/away");
+
+    act(() => vi.advanceTimersByTime(300));
+
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/away");
+    expect(screen.queryByText("Playlist destination")).not.toBeInTheDocument();
+  });
+
+  test("restarts the navigation delay on a second playlist click", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/home"]}>
+          <Routes>
+            <Route path="/home" element={<Home />} />
+            <Route
+              path="/playlists/1223482895"
+              element={<div>Today destination</div>}
+            />
+            <Route
+              path="/playlists/2252904"
+              element={<div>Weekly destination</div>}
+            />
+          </Routes>
+          <CurrentPath />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    act(() => vi.advanceTimersByTime(150));
+    fireEvent.click(screen.getByTestId("today-playlist"));
+    act(() => vi.advanceTimersByTime(150));
+    fireEvent.click(screen.getByTestId("weekly-playlist"));
+
+    act(() => vi.advanceTimersByTime(299));
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/home");
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.getByTestId("current-path")).toHaveTextContent(
+      "/playlists/2252904",
+    );
+    expect(screen.getByText("Weekly destination")).toBeInTheDocument();
   });
   describe("Widget", () => {
+    test.each([
+      { isLoading: true, error: null },
+      { isLoading: false, error: new Error("Widget unavailable") },
+    ])(
+      "shows the widget fallback for unavailable data",
+      async ({ isLoading, error }) => {
+        vi.useRealTimers();
+        mockedUseQuery.mockReturnValue({
+          ...mockedWidgetData,
+          data: undefined,
+          isLoading,
+          error,
+        } as UseQueryResult<PlaylistById>);
+
+        render(
+          <QueryClientProvider client={new QueryClient()}>
+            <MemoryRouter initialEntries={["/home"]}>
+              <Suspense fallback={null}>
+                <Widget fadeOutNavigate={fadeOutNavigate} />
+              </Suspense>
+            </MemoryRouter>
+          </QueryClientProvider>,
+        );
+
+        expect(
+          await screen.findByTestId("widget-fallback"),
+        ).toBeInTheDocument();
+      },
+    );
     test("should render", async () => {
       render(
         <QueryClientProvider client={new QueryClient()}>
@@ -250,6 +337,7 @@ describe("Home", () => {
         expect(image).toHaveClass("widget-banner-fadeout");
 
         fireEvent.load(image);
+        act(() => vi.advanceTimersByTime(150));
 
         expect(widget).toHaveClass("song-fadein");
         expect(image).toHaveClass("widget-banner-fadein");

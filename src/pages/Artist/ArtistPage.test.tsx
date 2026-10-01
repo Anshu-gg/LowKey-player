@@ -25,6 +25,7 @@ import {
 import { MemoryRouter, useLocation, useParams } from "react-router-dom";
 import { AlbumById, ArtistType, TrackDetails } from "../../types/GlobalTypes";
 import { sampleAlbum, sampleArtist, sampleTrack } from "../../api/samples";
+import { clearRequestCache } from "../../api/requests";
 const artistfallback = "/fallbacks/artist-fallback.png";
 const albumfallback = "/fallbacks/playlist-fallback.webp";
 import ArtistPage, {
@@ -93,9 +94,27 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe("ArtistPage", () => {
+  test("renders the page shell without an artist id", () => {
+    mockedUseParams.mockReturnValue({});
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/artists"]}>
+          <ArtistPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByTestId("artist-page")).toBeInTheDocument();
+    expect(screen.queryByTestId("artist-info")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("artist-albums")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("artist-songs")).not.toBeInTheDocument();
+  });
+
   test("should render", async () => {
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -142,6 +161,7 @@ describe("ArtistPage", () => {
     });
     describe("artist image", () => {
       test("should render", () => {
+        vi.useFakeTimers();
         render(
           <QueryClientProvider client={new QueryClient()}>
             <MemoryRouter initialEntries={[`/artists/${id}`]}>
@@ -151,6 +171,7 @@ describe("ArtistPage", () => {
         );
         expect(screen.getByAltText("Artist name")).toHaveClass("image-fadeout");
         fireEvent.load(screen.getByAltText("Artist name"));
+        act(() => vi.advanceTimersByTime(150));
         expect(screen.getByAltText("Artist name")).toHaveClass("image-fadein");
       });
       test("should be artistfallback onError", () => {
@@ -228,6 +249,45 @@ describe("ArtistPage", () => {
           expect(artistImage).not.toHaveClass("image-fadeout");
           expect(artistTitle).not.toHaveClass("song-fadeout");
         });
+      });
+
+      test("renders follower counts and available social links", () => {
+        mockedUseQuery.mockReturnValue({
+          ...mockedArtistData,
+          data: {
+            ...sampleArtist,
+            followerCount: "1234",
+            fanCount: "5678",
+            fb: "https://example.com/facebook",
+            twitter: "https://example.com/twitter",
+            wiki: "https://example.com/wiki",
+          },
+        } as unknown as UseQueryResult<ArtistType>);
+
+        render(
+          <QueryClientProvider client={new QueryClient()}>
+            <MemoryRouter initialEntries={[`/artists/${id}`]}>
+              <ArtistInfo id={id} />
+            </MemoryRouter>
+          </QueryClientProvider>,
+        );
+
+        expect(screen.getByTestId("artist-followers")).toHaveTextContent(
+          "1,234",
+        );
+        expect(screen.getByTestId("artist-fans")).toHaveTextContent("5,678");
+        expect(screen.getByAltText("meta").closest("a")).toHaveAttribute(
+          "href",
+          "https://example.com/facebook",
+        );
+        expect(screen.getByAltText("x").closest("a")).toHaveAttribute(
+          "href",
+          "https://example.com/twitter",
+        );
+        expect(screen.getByAltText("wiki").closest("a")).toHaveAttribute(
+          "href",
+          "https://example.com/wiki",
+        );
       });
     });
     test('should show name if present else "Unknown Artist"', () => {
@@ -351,6 +411,59 @@ describe("ArtistPage", () => {
       );
       expect(screen.queryByTestId("albums-container")).not.toBeInTheDocument();
     });
+    test("disables the query and resolves an empty list without an id", async () => {
+      let queryEnabled: unknown;
+      let queryFn: (() => Promise<AlbumById[]>) | undefined;
+      mockedUseQuery.mockImplementation((options) => {
+        queryEnabled = options.enabled;
+        queryFn = options.queryFn as () => Promise<AlbumById[]>;
+        return {
+          ...mockedArtistAlbumData,
+          data: undefined,
+        } as UseQueryResult<AlbumById[]>;
+      });
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <MemoryRouter initialEntries={["/artists"]}>
+            <ArtistAlbums id="" />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+
+      expect(queryEnabled).toBe(false);
+      await expect(queryFn?.()).resolves.toEqual([]);
+    });
+    test("runs the album query for a valid artist id", async () => {
+      let queryFn: (() => Promise<AlbumById[]>) | undefined;
+      const mockAlbums = [sampleAlbum];
+      clearRequestCache();
+      mockedUseQuery.mockImplementation((options) => {
+        queryFn = options.queryFn as () => Promise<AlbumById[]>;
+        return {
+          ...mockedArtistAlbumData,
+          data: undefined,
+        } as UseQueryResult<AlbumById[]>;
+      });
+      (fetch as Mock).mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: { albums: mockAlbums } }),
+      });
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <MemoryRouter initialEntries={[`/artists/${id}`]}>
+            <ArtistAlbums id={id} />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+
+      await expect(queryFn?.()).resolves.toEqual(mockAlbums);
+      expect(fetch).toHaveBeenCalledWith(
+        `http://localhost:3000/api/artists/${id}/albums?page=0`,
+        undefined,
+      );
+    });
     test("getAlbumImage should get the image url if available else return albumfallback", () => {
       const { unmount } = render(
         <QueryClientProvider client={new QueryClient()}>
@@ -384,9 +497,30 @@ describe("ArtistPage", () => {
 
       const newImage = screen.getByAltText("artist-album-image");
       expect(newImage).toBeInTheDocument();
-      waitFor(() => {
-        expect((newImage as HTMLImageElement).src).toContain(albumfallback);
-      });
+      expect((newImage as HTMLImageElement).src).toContain(albumfallback);
+    });
+    test("uses the first image when no preferred image exists", () => {
+      mockedUseQuery.mockReturnValue({
+        ...mockedArtistAlbumData,
+        data: [
+          {
+            ...sampleAlbum,
+            image: [{ quality: "50x50", url: "first-image-url" }],
+          },
+        ],
+      } as unknown as UseQueryResult<AlbumById[]>);
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <MemoryRouter initialEntries={[`/artists/${id}`]}>
+            <ArtistAlbums id={id} />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+
+      expect(
+        (screen.getByAltText("artist-album-image") as HTMLImageElement).src,
+      ).toContain("first-image-url");
     });
   });
   describe("ArtistSongs", () => {
@@ -419,6 +553,22 @@ describe("ArtistPage", () => {
       );
 
       expect(result).toEqual(mockSongs);
+    });
+    test("shows the empty state when no songs are returned", () => {
+      mockedUseQuery.mockReturnValue({
+        ...mockedArtistSongData,
+        data: undefined,
+      } as unknown as UseQueryResult<TrackDetails[]>);
+
+      render(
+        <QueryClientProvider client={new QueryClient()}>
+          <MemoryRouter initialEntries={[`/artists/${id}`]}>
+            <ArtistSongs id={id} />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+
+      expect(screen.getByText("No songs here...T_T")).toBeInTheDocument();
     });
   });
 });

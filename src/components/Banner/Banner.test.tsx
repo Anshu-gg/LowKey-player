@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import Banner from "./Banner";
 import { useBoundStore } from "../../store/store";
 import { MemoryRouter } from "react-router-dom";
@@ -14,11 +14,17 @@ import { MemoryRouter } from "react-router-dom";
 afterEach(() => {
   act(() => {
     useBoundStore.setState({
+      greeting: "",
       notifications: false,
       recents: { activity: [], history: [] },
     });
   });
   cleanup();
+  vi.useRealTimers();
+});
+
+beforeEach(() => {
+  useBoundStore.getState().changeGreeting("");
 });
 
 describe("Banner", () => {
@@ -30,6 +36,31 @@ describe("Banner", () => {
     );
     expect(screen.getByRole("banner")).toBeInTheDocument();
     expect(screen.getByTestId("notifs")).toBeInTheDocument();
+  });
+  describe("greeting", () => {
+    test.each([
+      [5, "Jump back in"],
+      [6, "Good morning"],
+      [12, "Good morning"],
+      [13, "Good afternoon"],
+      [15, "Good afternoon"],
+      [16, "Good evening"],
+      [18, "Good evening"],
+      [19, "Good night"],
+      [23, "Good night"],
+    ])("shows the greeting for hour %i", (hour, expectedGreeting) => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date(2025, 0, 1, hour));
+
+      render(
+        <MemoryRouter>
+          <Banner />
+        </MemoryRouter>,
+      );
+
+      expect(screen.getByText(expectedGreeting)).toBeInTheDocument();
+      expect(useBoundStore.getState().greeting).toBe(expectedGreeting);
+    });
   });
   describe("NotificationButton", () => {
     test("should render", async () => {
@@ -128,7 +159,9 @@ describe("Banner", () => {
       });
 
       await waitFor(() => {
-        expect(useBoundStore.getState().recents.activity.length).toBeGreaterThan(0);
+        expect(
+          useBoundStore.getState().recents.activity.length,
+        ).toBeGreaterThan(0);
         expect(screen.getAllByRole("list").length).toBeGreaterThan(0);
       });
     });

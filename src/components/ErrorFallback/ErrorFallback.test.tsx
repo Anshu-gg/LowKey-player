@@ -1,7 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, test, vi } from "vitest";
-import Home from "../../pages/Home/Home";
 import ErrorFallback from "./ErrorFallback";
 
 afterEach(() => {
@@ -10,12 +8,7 @@ afterEach(() => {
 
 describe("ErrorFallback", () => {
   test("should render", async () => {
-    render(
-      <MemoryRouter initialEntries={["/home"]}>
-        <ErrorFallback message="Unexpected error" />
-        <Home />
-      </MemoryRouter>,
-    );
+    render(<ErrorFallback message="Unexpected error" />);
     expect(await screen.findByTestId("error-fallback")).toBeInTheDocument();
   });
   test("reload button reloads the page", async () => {

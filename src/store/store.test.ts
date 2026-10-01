@@ -92,6 +92,22 @@ describe("Testing store localStorage hydration", () => {
     expect(freshStore.getState().recents.history).toEqual([]);
     expect(freshStore.getState().recents.activity).toEqual([recentActivity]);
   });
+
+  test("recovers with empty recents when stored JSON is malformed", async () => {
+    localStorage.clear();
+    localStorage.setItem("last-recents", "{ malformed json");
+    vi.resetModules();
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const freshStoreModule = await import("./store");
+
+    expect(freshStoreModule.useBoundStore.getState().recents).toEqual({
+      history: [],
+      activity: [],
+    });
+    expect(consoleSpy).toHaveBeenCalledWith("Could not get saved recents..");
+    consoleSpy.mockRestore();
+  });
 });
 
 describe("Testing greeting", () => {

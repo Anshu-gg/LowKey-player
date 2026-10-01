@@ -113,7 +113,7 @@ describe("NotFound", () => {
       vi.useFakeTimers();
 
       ref.current = div;
-      animateScreen(ref);
+      const clearTimer = animateScreen(ref.current, "home-fadeout");
 
       expect(ref.current?.classList).toContain("home-fadeout");
       expect(ref.current?.classList).not.toContain("home-fadein");
@@ -122,7 +122,7 @@ describe("NotFound", () => {
 
       expect(ref.current?.classList).not.toContain("home-fadeout");
       expect(ref.current?.classList).toContain("home-fadein");
-
+      clearTimer();
       vi.useRealTimers();
     });
 

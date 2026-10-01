@@ -1,11 +1,14 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import App, { routes } from "./App";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { clearRequestCache } from "./api/requests";
+import { samplePlaylist } from "./api/samples";
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
 });
 
 describe("App", () => {
@@ -111,6 +114,11 @@ describe("App", () => {
   });
 
   test("renders playlist page for '/playlists/:id'", async () => {
+    clearRequestCache();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: samplePlaylist }),
+    } as Response);
     const memoryRouter = createMemoryRouter(routes, {
       initialEntries: ["/playlists/23141"],
     });

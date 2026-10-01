@@ -19,6 +19,7 @@ afterEach(() => {
   useBoundStore.setState(initialState, true);
   localStorage.clear();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 describe("getTrackImage", () => {
@@ -197,26 +198,90 @@ describe("saveToLocalStorage", () => {
   });
 });
 
-test("animateScreen should animate screens", async () => {
-  const ref = {
-    current: null as HTMLDivElement | null,
-  };
+test("animateScreen applies the default class swap after 150 ms", () => {
+  vi.useFakeTimers();
   const div = document.createElement("div");
   div.classList.add("home-fadeout");
+
+  animateScreen(div, "home-fadeout");
+
+  expect(div).toHaveClass("home-fadeout");
+  vi.advanceTimersByTime(149);
+  expect(div).toHaveClass("home-fadeout");
+  expect(div).not.toHaveClass("home-fadein");
+  vi.advanceTimersByTime(1);
+
+  expect(div).not.toHaveClass("home-fadeout");
+  expect(div).toHaveClass("home-fadein");
+});
+
+test("animateScreen honors a custom delay", () => {
   vi.useFakeTimers();
+  const div = document.createElement("div");
+  div.classList.add("image-fadeout");
 
-  ref.current = div;
-  animateScreen(ref);
+  animateScreen(div, "image-fadeout", 25);
 
-  expect(ref.current?.classList).toContain("home-fadeout");
-  expect(ref.current?.classList).not.toContain("home-fadein");
+  vi.advanceTimersByTime(24);
+  expect(div).toHaveClass("image-fadeout");
+  vi.advanceTimersByTime(1);
+  expect(div).toHaveClass("image-fadein");
+  expect(div).not.toHaveClass("image-fadeout");
+});
 
+test("animateScreen reverses a timed fadein class", () => {
+  vi.useFakeTimers();
+  const div = document.createElement("div");
+  div.classList.add("home-fadein");
+
+  animateScreen(div, "home-fadein", 0);
   vi.runAllTimers();
 
-  expect(ref.current?.classList).not.toContain("home-fadeout");
-  expect(ref.current?.classList).toContain("home-fadein");
+  expect(div).toHaveClass("home-fadeout");
+  expect(div).not.toHaveClass("home-fadein");
+});
 
-  vi.useRealTimers();
+test("animateScreen cleanup cancels the pending class change", () => {
+  vi.useFakeTimers();
+  const div = document.createElement("div");
+  div.classList.add("home-fadeout");
+
+  const clearTimer = animateScreen(div, "home-fadeout");
+  clearTimer();
+  vi.runAllTimers();
+
+  expect(div).toHaveClass("home-fadeout");
+  expect(div).not.toHaveClass("home-fadein");
+});
+
+test.each(["home-fadein", "home-fadeout"])(
+  "animateScreen exits immediately when given %s",
+  (animation) => {
+    vi.useFakeTimers();
+    const div = document.createElement("div");
+    div.classList.add("home-fadein");
+
+    const clearTimer = animateScreen(div, animation, { direction: "exit" });
+
+    expect(div).toHaveClass("home-fadeout");
+    expect(div).not.toHaveClass("home-fadein");
+    expect(vi.getTimerCount()).toBe(0);
+    clearTimer();
+    expect(div).toHaveClass("home-fadeout");
+  },
+);
+
+test("animateScreen ignores invalid exit classes without scheduling a timer", () => {
+  vi.useFakeTimers();
+  const div = document.createElement("div");
+  div.classList.add("home-visible");
+
+  const clearTimer = animateScreen(div, "home-visible", { direction: "exit" });
+
+  expect(div).toHaveClass("home-visible");
+  expect(vi.getTimerCount()).toBe(0);
+  clearTimer();
+  expect(div).toHaveClass("home-visible");
 });
 
 describe("handleCollectionPlayback", () => {

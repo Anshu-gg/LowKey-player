@@ -30,6 +30,8 @@ const genre = "edm";
 const fadeOutNavigate = vi.fn();
 
 beforeEach(() => {
+  observerInstance = null;
+  mockedUseQuery.mockClear();
   mockedUseQuery.mockReturnValue(
     mockedSectionData as UseQueryResult<PlaylistOfList[]>,
   );
@@ -67,7 +69,7 @@ describe("Section", () => {
     act(() => {
       observerInstance?.trigger(true);
     });
-    waitFor(() => {
+    await waitFor(() => {
       const item = screen.getByTestId("playlist-item");
       expect(item).toBeInTheDocument();
     });
@@ -88,6 +90,63 @@ describe("Section", () => {
     const item = screen.getByTestId("playlist-item");
     fireEvent.click(item);
     expect(fadeOutNavigate).toHaveBeenCalledWith("/playlists/2312321");
+  });
+
+  test("navigates on keyboard activation", () => {
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter initialEntries={["/"]}>
+          <Section genre={genre} fadeOutNavigate={fadeOutNavigate} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const item = screen.getByTestId("playlist-item");
+
+    fireEvent.keyUp(item, { key: "Enter" });
+
+    expect(fadeOutNavigate).toHaveBeenCalledWith("/playlists/2312321");
+  });
+
+  test.each([
+    { isLoading: true, error: null },
+    { isLoading: false, error: new Error("Playlist request failed") },
+  ])("shows its fallback while data is unavailable", ({ isLoading, error }) => {
+    mockedUseQuery.mockReturnValue({
+      ...mockedNullDataResult,
+      data: undefined,
+      isLoading,
+      error,
+    } as UseQueryResult<PlaylistOfList[]>);
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <Section genre={genre} fadeOutNavigate={fadeOutNavigate} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByTestId("section-fallback")).toBeInTheDocument();
+  });
+
+  test("renders an empty list when a successful query has no data", () => {
+    mockedUseQuery.mockReturnValue({
+      ...mockedSectionData,
+      data: null,
+      isLoading: false,
+      error: null,
+    } as unknown as UseQueryResult<PlaylistOfList[]>);
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <Section genre={genre} fadeOutNavigate={fadeOutNavigate} />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(screen.getByTestId(genre)).toBeInTheDocument();
+    expect(screen.getByRole("list").children).toHaveLength(0);
   });
 
   describe("IntersectionObserver", () => {
@@ -119,6 +178,10 @@ describe("Section", () => {
         observerInstance?.trigger(true);
       });
       expect(mockedUseQuery).toHaveBeenCalled();
+      expect(
+        mockedUseQuery.mock.calls[mockedUseQuery.mock.calls.length - 1]?.[0]
+          .enabled,
+      ).toBe(true);
     });
 
     test("getPlaylist should fetch and process data correctly", async () => {
@@ -146,10 +209,8 @@ describe("Section", () => {
         </QueryClientProvider>,
       );
       unmount();
-      if (observerInstance)
-        expect(observerInstance.disconnect).toHaveBeenCalled();
+      expect(observerInstance).not.toBeNull();
+      expect(observerInstance?.disconnect).toHaveBeenCalled();
     });
   });
 });
-
-export { IntersectionObserverMock };
