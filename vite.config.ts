@@ -13,7 +13,7 @@ export default defineConfig(() => ({
     environment: "jsdom",
     include: ["**/*.{test,spec}.{js,jsx,ts,tsx}"],
     exclude: ["node_modules", "dist", ".git"],
-    setupFiles: ["./src/setup.test.ts"],
+    setupFiles: ["./src/setup.ts"],
     coverage: {
       enabled: true,
       provider: "istanbul",
