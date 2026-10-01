@@ -68,11 +68,11 @@ h1 {
 }
 
 .widget-banner-fadeout {
-  @apply opacity-0 blur-lg grayscale;
+  @apply opacity-0 grayscale;
 }
 
 .widget-banner-fadein {
-  @apply opacity-100 blur-0 grayscale-0;
+  @apply opacity-100 grayscale-0;
 }
 
 .song-fadeout {
@@ -80,15 +80,15 @@ h1 {
 }
 
 .song-fadein {
-  @apply opacity-100 duration-200;
+  @apply opacity-100;
 }
 
 .image-fadein {
-  @apply opacity-100 blur-0;
+  @apply opacity-100;
 }
 
 .image-fadeout {
-  @apply opacity-0 blur-xl;
+  @apply opacity-0;
 }
 
 .animate-scroll-left {
