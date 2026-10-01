@@ -6,8 +6,10 @@ export type Helpers = {
     isMobile: boolean,
   ) => string;
   animateScreen: (
-    ref: React.RefObject<HTMLDivElement | null>,
-  ) => NodeJS.Timeout;
+    ele: HTMLElement,
+    animation: string,
+    customDelay?: number | { direction: "exit" },
+  ) => () => void;
   cleanString: (str: string) => string;
   secondsToHMS: (s: number) => string;
   handleCollectionPlayback: (
