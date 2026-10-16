@@ -8,7 +8,7 @@ import {
 import { defaultSearchData } from "../utils/utils";
 const CACHE_TTL = 60000;
 const cache = new Map();
-const BASE_URL = "base-url";
+const BASE_URL = import.meta.env.VITE_API_URL || "https://jiosaavn-api.anshupandey7997.workers.dev";
 
 export const clearRequestCache = () => {
   cache.clear();
